@@ -1,4 +1,4 @@
-package co.edu.uniquindio.proyecto.domain.valueobject.usuario;
+package co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario;
 
 public enum EstadoUsuario {
     ACTIVO, INACTIVO

@@ -1,8 +1,8 @@
-package co.edu.uniquindio.proyecto.domain.entity;
+package co.edu.uniquindio.ProyectoSolicitudes.domain.entity;
 
-import co.edu.uniquindio.proyecto.domain.valueobject.usuario.Email;
-import co.edu.uniquindio.proyecto.domain.valueobject.usuario.EstadoUsuario;
-import co.edu.uniquindio.proyecto.domain.valueobject.usuario.TipoUsuario;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.Email;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.EstadoUsuario;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
 
 import java.util.UUID;
 

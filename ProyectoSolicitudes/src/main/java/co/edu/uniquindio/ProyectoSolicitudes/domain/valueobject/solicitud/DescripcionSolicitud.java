@@ -1,6 +1,6 @@
 package co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud;
 
-import co.edu.uniquindio.proyecto.domain.exception.DescripcionInvalidaException;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.DescripcionInvalidaException;
 
 public record DescripcionSolicitud(String texto ) {
     public DescripcionSolicitud {

@@ -1,7 +1,7 @@
 package co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud;
 // Al cerrar cada solicitud es obligatorio hacer una observación de minimo 20 caracteres
 
-import co.edu.uniquindio.proyecto.domain.exception.ObservacionInvalidaException;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.ObservacionInvalidaException;
 
 public record ObservacionCierre(String texto) {
 

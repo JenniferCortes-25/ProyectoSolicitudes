@@ -1,6 +1,6 @@
 package co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud;
 
-import co.edu.uniquindio.proyecto.domain.exception.PrioridadSinJustificacionException;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.PrioridadSinJustificacionException;
 
 import java.util.Objects;
 

@@ -1,6 +1,6 @@
-package co.edu.uniquindio.proyecto.domain.entity;
+package co.edu.uniquindio.ProyectoSolicitudes.domain.entity;
 
-import co.edu.uniquindio.proyecto.domain.valueobject.solicitud.*;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
