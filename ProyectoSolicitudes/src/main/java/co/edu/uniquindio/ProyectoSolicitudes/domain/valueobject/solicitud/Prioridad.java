@@ -1,0 +1,17 @@
+package co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud;
+
+import co.edu.uniquindio.proyecto.domain.exception.PrioridadSinJustificacionException;
+
+import java.util.Objects;
+
+public class Prioridad (NivelPrioridad nivel, String justificacion) {
+
+    enum NivelPrioridad {
+        CRITICA, ALTA, MEDIA, BAJA
+    }
+
+    Objects.requireNonNull(nivel,"El nivel de prioridad es obligatorio");
+    if justificacion == null || justificacion.isBlank()){
+        throw  new PrioridadSinJustificacionException();
+    }
+}
