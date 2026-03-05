@@ -4,14 +4,17 @@ import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.PrioridadSinJustif
 
 import java.util.Objects;
 
-public class Prioridad (NivelPrioridad nivel, String justificacion) {
+public record Prioridad(NivelPrioridad nivel, String justificacion) {
 
-    enum NivelPrioridad {
-        CRITICA, ALTA, MEDIA, BAJA
+    public Prioridad {
+        Objects.requireNonNull(nivel, "El nivel de prioridad es obligatorio");
+
+        if (justificacion == null || justificacion.isBlank()) {
+            throw new PrioridadSinJustificacionException();
+        }
     }
 
-    Objects.requireNonNull(nivel,"El nivel de prioridad es obligatorio");
-    if justificacion == null || justificacion.isBlank()){
-        throw  new PrioridadSinJustificacionException();
+    public enum NivelPrioridad {
+        CRITICA, ALTA, MEDIA, BAJA
     }
 }
