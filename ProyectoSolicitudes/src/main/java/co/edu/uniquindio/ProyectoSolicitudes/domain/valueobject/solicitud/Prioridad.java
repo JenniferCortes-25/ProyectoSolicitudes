@@ -10,11 +10,16 @@ public record Prioridad(NivelPrioridad nivel, String justificacion) {
         Objects.requireNonNull(nivel, "El nivel de prioridad es obligatorio");
 
         if (justificacion == null || justificacion.isBlank()) {
-            throw new PrioridadSinJustificacionException();
+            throw new PrioridadSinJustificacionException(   );
         }
+
+        justificacion = justificacion.trim();
     }
 
     public enum NivelPrioridad {
-        CRITICA, ALTA, MEDIA, BAJA
+        CRITICA,
+        ALTA,
+        MEDIA,
+        BAJA
     }
 }

@@ -1,5 +1,7 @@
 package co.edu.uniquindio.ProyectoSolicitudes.domain.entity;
 
+import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.SolicitudCerradaException;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.TransicionInvalidaException;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.*;
 
 import java.time.LocalDateTime;
@@ -78,7 +80,8 @@ public class Solicitud {
 
     public void cerrar(ObservacionCierre observacionCierre){}
 
-    public void agregarHistorial(EntradaHistorial entradaHistorial){}
+    public void agregarHistorial(String s, String usuarioResponsable, String s1) {
+    }
 
     public void validarNoEstaCerrada(){
         if (this.estado == EstadoSolicitud.CERRADA){
