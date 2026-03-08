@@ -1,5 +1,5 @@
 package co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud;
 
 public enum CanalOrigen {
-    PRESENCIAL, CORREO_ELECTRINICO, SAC, TELEFONICO, CSU,
+    PRESENCIAL, CORREO_ELECTRONICO, SAC, TELEFONICO, CSU,
 }
