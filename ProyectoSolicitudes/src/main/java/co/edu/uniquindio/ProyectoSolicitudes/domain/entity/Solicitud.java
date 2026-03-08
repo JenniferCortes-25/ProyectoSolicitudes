@@ -103,7 +103,7 @@ public class Solicitud {
         validarNoEstaCerrada();
 
         if(!responsableActivo){
-            throw new UsuarioInactivoException();
+            throw new UsuarioInactivoException("El usuario debe estar activo");
         }
 
         if (nuevoResponsable == null) throw new IllegalArgumentException("El responsable no puede ser nulo ");
@@ -127,7 +127,7 @@ public class Solicitud {
         validarNoEstaCerrada();
 
         if(this.responsable == null){
-            throw new SinResponsableException();
+            throw new SinResponsableException("Debe tener un responsable asignado");
         }
         if(this.estado != EstadoSolicitud.CLASIFICADA){
             throw new TransicionInvalidaException("Solo se puede inciar atención si la solicitud ya esta clasificada");
