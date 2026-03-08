@@ -140,4 +140,14 @@ class DominioTest {
 
 		assertThrows(IllegalStateException.class, usuario::activar);
 	}
-}
+
+	// ─── Test 11: Descripción menor a 10 chars lanza DescripcionInvalidaException
+
+	@Test
+	void descripcionMenorA10CaracteresDebeLanzarDescripcionInvalidaException() {
+		assertThrows(DescripcionInvalidaException.class, () ->
+				new DescripcionSolicitud("corta")
+		);
+	}
+
+	}
