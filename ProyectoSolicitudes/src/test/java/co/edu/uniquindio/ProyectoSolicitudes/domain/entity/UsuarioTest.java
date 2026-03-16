@@ -148,3 +148,4 @@ class UsuarioTest {
         assertFalse(usuario.tieneTipo(TipoUsuario.ADMINISTRATIVO));
     }
 }
+

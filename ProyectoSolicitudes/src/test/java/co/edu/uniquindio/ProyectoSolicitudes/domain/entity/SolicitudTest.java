@@ -521,3 +521,4 @@ class SolicitudTest {
         assertEquals(7, solicitud.getHistorial().size());
     }
 }
+

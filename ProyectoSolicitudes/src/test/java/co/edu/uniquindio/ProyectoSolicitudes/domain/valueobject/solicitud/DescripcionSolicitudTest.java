@@ -99,3 +99,4 @@ class DescripcionSolicitudTest {
         assertThrows(DescripcionInvalidaException.class, () -> new DescripcionSolicitud("          "));
     }
 }
+
