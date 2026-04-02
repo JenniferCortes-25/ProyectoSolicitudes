@@ -2,11 +2,14 @@ package co.edu.uniquindio.ProyectoSolicitudes.domain.entity;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.*;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.*;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
+
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class Solicitud {
@@ -17,31 +20,39 @@ public class Solicitud {
     private EstadoSolicitud estado;          // inicia siempre en REGISTRADA
     private CanalOrigen canal;
     private UUID solicitanteId;
-    private Responsable responsable; // null hasta asignar
+    private String solicitanteNombre;
+    private Responsable responsable;
     private List<EntradaHistorial> historial = new ArrayList<>();
     private LocalDateTime fechaRegistro;
 
     // Constructor
-    public Solicitud(DescripcionSolicitud descricpion, CanalOrigen canal, UUID solicitanteId){
-        if (canal == null) throw new IllegalArgumentException("El canal de origen es obligatorio");
-        if (solicitanteId == null) throw new IllegalArgumentException("El solicitante es obligatorio");
+    /**
+     * Recibe el Usuario solicitante para validar que esté activo en el momento del registro.
+     */
+    public Solicitud(DescripcionSolicitud descricpion, CanalOrigen canal,Usuario solicitante) {
+        Objects.requireNonNull(descripcion,  "La descripción no puede ser nula");
+        Objects.requireNonNull(canal,        "El canal de origen no puede ser nulo");
+        Objects.requireNonNull(solicitante,  "El solicitante no puede ser nulo");
 
-        this.id = UUID.randomUUID();
-        this.descripcion = descricpion;
-        this.canal         = canal;
-        this.solicitanteId = solicitanteId;
-        this.estado        = EstadoSolicitud.REGISTRADA;  // siempre inicia aquí
-        this.tipo          = null;
-        this.prioridad     = null;
-        this.responsable   = null;
-        this.historial     = new ArrayList<>();
-        this.fechaRegistro = LocalDateTime.now();
+        if (!solicitante.estaActivo())
+            throw new UsuarioInactivoException("El solicitante debe estar activo");
 
-        // Primera entrada del historial
+        this.id                = UUID.randomUUID();
+        this.descripcion       = descripcion;
+        this.canal             = canal;
+        this.solicitanteId     = solicitante.getId();
+        this.solicitanteNombre = solicitante.getNombre();
+        this.estado            = EstadoSolicitud.REGISTRADA;
+        this.tipo              = null;
+        this.prioridad         = null;
+        this.responsable       = null;
+        this.historial         = new ArrayList<>();
+        this.fechaRegistro     = LocalDateTime.now();
+
         this.historial.add(new EntradaHistorial(
                 this.fechaRegistro,
                 "Solicitud registrada por canal: " + canal,
-                solicitanteId.toString(),
+                solicitante.getNombre(),
                 ""
         ));
     }
@@ -52,93 +63,118 @@ public class Solicitud {
      * RF-02 / RN-01
      * Asigna el tipo a la solicitud.
      * Solo se puede clasificar si el estado actual es REGISTRADA.
+     * Solo un COORDINADOR puede clasificar
      */
-    public void clasificar(TipoSolicitud nuevoTipo, String usuarioResponsable){
+    public void clasificar(TipoSolicitud nuevoTipo, Usuario coordinador){
         validarNoEstaCerrada();
 
-        if(this.estado != EstadoSolicitud.REGISTRADA){
+        Objects.requireNonNull(coordinador, "El coordinador no puede ser nulo");
+
+        if (!coordinador.tieneTipo(TipoUsuario.COORDINADOR))
+            throw new PermisoInsuficienteException("Solo un coordinador puede clasificar una solicitud");
+
+        if (this.estado != EstadoSolicitud.REGISTRADA)
             throw new TransicionInvalidaException(
-                    "Solo se puede clasificar en estado REGISTRADA. Estado actual: " + this.estado
-            );
-        }
-        if (nuevoTipo == null) throw new IllegalArgumentException("El tipo no puede ser nulo");
-        this.tipo = nuevoTipo;
+                    "Solo se puede clasificar en estado REGISTRADA. Estado actual: " + this.estado);
+
+        if (nuevoTipo == null)
+            throw new IllegalArgumentException("El tipo no puede ser nulo");
+
+        this.tipo   = nuevoTipo;
         this.estado = EstadoSolicitud.CLASIFICADA;
 
         agregarHistorial(new EntradaHistorial(
                 LocalDateTime.now(),
-                "Solicitud clasificacion como: " + nuevoTipo,
-                usuarioResponsable, ""
+                "Solicitud clasificada como: " + nuevoTipo,
+                coordinador.getNombre(),
+                ""
         ));
     }
     /**
      * RF-03 / RN-02
      * Solo se puede asignar prioridad si estado == CLASIFICADA.
+     *  Solo un COORDINADOR puede asignar prioridad.
      */
-    public void asignarPrioridad(Prioridad nuevaprioridad, String usuarioResponsable){
+    public void asignarPrioridad(Prioridad prioridad, Usuario coordinador){
         validarNoEstaCerrada();
 
-        if(this.estado != EstadoSolicitud.CLASIFICADA){
+        Objects.requireNonNull(coordinador, "El coordinador no puede ser nulo");
+
+        if (!coordinador.tieneTipo(TipoUsuario.COORDINADOR))
+            throw new PermisoInsuficienteException("Solo un coordinador puede asignar prioridad");
+
+        if (this.estado != EstadoSolicitud.CLASIFICADA)
             throw new TransicionInvalidaException(
-                    "Solo se puede asignar prioridad en estado Clasificada. Estado actual " + this.estado
-            );
-        }
-        if (nuevaprioridad == null) throw new IllegalArgumentException("La prioridad no puede ser nula");
-        this.prioridad = nuevaprioridad;
+                    "Solo se puede asignar prioridad en estado CLASIFICADA. Estado actual: " + this.estado);
+
+        if (prioridad == null)
+            throw new IllegalArgumentException("La prioridad no puede ser nula");
+
+        this.prioridad = prioridad;
 
         agregarHistorial(new EntradaHistorial(
                 LocalDateTime.now(),
-                "Prioridad aasignada: " + nuevaprioridad.nivel() + "-" + nuevaprioridad.justificacion(),
-                usuarioResponsable,
+                "Prioridad asignada: " + prioridad.nivel() + " - " + prioridad.justificacion(),
+                coordinador.getNombre(),
                 ""
         ));
     }
 
     /**
      * RF-05 / RN-03 / RN-04 / RN-10
-     * El responsable debe estar activo y la solicitud no puede estar cerrada.
-     * Se recibe el boolean estaActivo para no depender de la entidad Usuario directamente.
+     * Solo COORDINADOR puede asignar responsable.
+     * El Responsable ya llega validado (activo) desde AsignarResponsableService.
+     * La validación de actividad la hace el servicio.
      */
-    public void asignarResponsable(Responsable nuevoResponsable, boolean responsableActivo, String usuarioResponsable){
+    public void asignarResponsable(Responsable nuevoResponsable, Usuario coordinador){
         validarNoEstaCerrada();
 
-        if(!responsableActivo){
-            throw new UsuarioInactivoException("El usuario debe estar activo");
-        }
+        Objects.requireNonNull(coordinador,     "El coordinador no puede ser nulo");
+        Objects.requireNonNull(nuevoResponsable, "El responsable no puede ser nulo");
 
-        if (nuevoResponsable == null) throw new IllegalArgumentException("El responsable no puede ser nulo ");
+        if (!coordinador.tieneTipo(TipoUsuario.COORDINADOR))
+            throw new PermisoInsuficienteException("Solo un coordinador puede asignar responsable");
 
         this.responsable = nuevoResponsable;
 
         agregarHistorial(new EntradaHistorial(
                 LocalDateTime.now(),
                 "Responsable asignado: " + nuevoResponsable.nombre(),
-                usuarioResponsable,
+                coordinador.getNombre(),
                 ""
         ));
     }
+
 
     /**
      * RN-02 / RN-05
      * Cambia estado a EN_ATENCION.
      * Requiere responsable asignado y estado == CLASIFICADA.
+     * Solo COORDINADOR o ADMINISTRATIVO pueden iniciar atención.
      */
-    public void iniciarAtencion(String usuarioResponsable){
+    public void iniciarAtencion(Usuario responsable){
         validarNoEstaCerrada();
 
-        if(this.responsable == null){
+        Objects.requireNonNull(responsable, "El usuario no puede ser nulo");
+
+        if (!responsable.tieneTipo(TipoUsuario.COORDINADOR)
+                && !responsable.tieneTipo(TipoUsuario.ADMINISTRATIVO))
+            throw new PermisoInsuficienteException(
+                    "Solo coordinador o administrativo puede iniciar atención");
+
+        if (this.responsable == null)
             throw new SinResponsableException("Debe tener un responsable asignado");
-        }
-        if(this.estado != EstadoSolicitud.CLASIFICADA){
-            throw new TransicionInvalidaException("Solo se puede inciar atención si la solicitud ya esta clasificada");
-        }
+
+        if (this.estado != EstadoSolicitud.CLASIFICADA)
+            throw new TransicionInvalidaException(
+                    "Solo se puede iniciar atención si la solicitud está clasificada. Estado actual: " + this.estado);
 
         this.estado = EstadoSolicitud.EN_ATENCION;
 
         agregarHistorial(new EntradaHistorial(
                 LocalDateTime.now(),
                 "Atención iniciada por: " + this.responsable.nombre(),
-                usuarioResponsable,
+                responsable.getNombre(),
                 ""
         ));
     }
@@ -147,20 +183,28 @@ public class Solicitud {
      * RN-02
      * Cambia estado a ATENDIDA.
      * Estado debe ser EN_ATENCION.
+     * Solo el responsable asignado puede marcar como atendida.
      */
-    public void atender(String observacion, String usuarioResponsable){
+    public void atender(String observacion, Usuario responsable){
         validarNoEstaCerrada();
 
-        if(this.estado != EstadoSolicitud.EN_ATENCION){
-            throw new TransicionInvalidaException("Solo se puede atender una solicitud en estado EN_ATENCION. Estado actual: " + this.estado);
-        }
+        Objects.requireNonNull(responsable, "El usuario no puede ser nulo");
+
+        if (this.responsable == null
+                || !this.responsable.usuarioId().equals(responsable.getId()))
+            throw new PermisoInsuficienteException(
+                    "Solo el responsable asignado puede marcar la solicitud como atendida");
+
+        if (this.estado != EstadoSolicitud.EN_ATENCION)
+            throw new TransicionInvalidaException(
+                    "Solo se puede atender en estado EN_ATENCION. Estado actual: " + this.estado);
 
         this.estado = EstadoSolicitud.ATENDIDA;
 
         agregarHistorial(new EntradaHistorial(
                 LocalDateTime.now(),
                 "Solicitud atendida",
-                usuarioResponsable,
+                responsable.getNombre(),
                 observacion != null ? observacion : ""
         ));
     }
@@ -168,19 +212,27 @@ public class Solicitud {
     /**
      * RF-08 / RN-01 / RN-02 / RN-08
      * Cierra definitivamente la solicitud.
+     * Solo COORDINADOR puede cerrar.
      * Estado debe ser ATENDIDA. La validación de los 20 chars la hace ObservacionCierre.
      */
-    public void cerrar(ObservacionCierre observacionCierre, String usuarioResponsable){
+    public void cerrar(ObservacionCierre observacionCierre, Usuario coordinador){
         validarNoEstaCerrada();
 
-        if(this.estado != EstadoSolicitud.ATENDIDA){
-            throw new TransicionInvalidaException("La solicitud no se puede cerrar si no ha sido atendida. Estado actual: " + this.estado );
-        }
+        Objects.requireNonNull(coordinador,       "El coordinador no puede ser nulo");
+        Objects.requireNonNull(observacionCierre, "La observación de cierre no puede ser nula");
+
+        if (!coordinador.tieneTipo(TipoUsuario.COORDINADOR))
+            throw new PermisoInsuficienteException("Solo un coordinador puede cerrar una solicitud");
+
+        if (this.estado != EstadoSolicitud.ATENDIDA)
+            throw new TransicionInvalidaException(
+                    "La solicitud no se puede cerrar si no ha sido atendida. Estado actual: " + this.estado);
+
         this.estado = EstadoSolicitud.CERRADA;
 
         agregarHistorialInterno(
                 "Solicitud cerrada",
-                usuarioResponsable,
+                coordinador.getNombre(),
                 observacionCierre.texto()
         );
     }
@@ -226,6 +278,7 @@ public class Solicitud {
     public EstadoSolicitud getEstado()           { return estado; }
     public CanalOrigen getCanal()                { return canal; }
     public UUID getSolicitanteId()               { return solicitanteId; }
+    public String getSolicitanteNombre()         { return solicitanteNombre; }
     public Responsable getResponsable()          { return responsable; }
     public LocalDateTime getFechaRegistro()      { return fechaRegistro; }
 

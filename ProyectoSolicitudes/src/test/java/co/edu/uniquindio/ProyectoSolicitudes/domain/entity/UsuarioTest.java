@@ -138,7 +138,7 @@ class UsuarioTest {
     }
 
     /**
-     * tieneTipo debe retornar false cuando el tipo no coincide.
+     * tieneTipo debe retornar, false cuando el tipo no coincide.
      */
     @Test
     void tieneTipoDebeRetornarFalseCuandoElTipoNoCoinide() {

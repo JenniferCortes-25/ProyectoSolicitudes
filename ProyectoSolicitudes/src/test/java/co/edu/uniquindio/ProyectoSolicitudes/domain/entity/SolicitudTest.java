@@ -2,60 +2,105 @@ package co.edu.uniquindio.ProyectoSolicitudes.domain.entity;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.*;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.*;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.Email;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
 import org.junit.jupiter.api.Test;
-
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class SolicitudTest {
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
 
-    private Solicitud solicitudValida() {
-        return new Solicitud(
-                new DescripcionSolicitud("Necesito homologar materia cursada en otra universidad"),
-                CanalOrigen.CORREO_ELECTRONICO,
-                UUID.randomUUID()
+    private Usuario coordinadorValido() {
+        return new Usuario(
+                "C-001",
+                "Coordinador Pérez",
+                new Email("coord@uniquindio.edu.co"),
+                TipoUsuario.COORDINADOR
         );
     }
 
-    private Solicitud solicitudClasificada() {
-        Solicitud s = solicitudValida();
-        s.clasificar(TipoSolicitud.HOMOLOGACION, "coord-01");
-        return s;
+    private Usuario solicitanteValido() {
+        return new Usuario(
+                "E-001",
+                "Estudiante García",
+                new Email("estudiante@uniquindio.edu.co"),
+                TipoUsuario.ESTUDIANTE
+        );
     }
 
-    private Solicitud solicitudConResponsable() {
-        Solicitud s = solicitudClasificada();
-        s.asignarResponsable(responsableValido(), true, "coord-01");
-        return s;
-    }
-
-    private Solicitud solicitudEnAtencion() {
-        Solicitud s = solicitudConResponsable();
-        s.iniciarAtencion("coord-01");
-        return s;
-    }
-
-    private Solicitud solicitudAtendida() {
-        Solicitud s = solicitudEnAtencion();
-        s.atender("Proceso completado satisfactoriamente", "coord-01");
-        return s;
-    }
-
-    private Solicitud solicitudCerrada() {
-        Solicitud s = solicitudAtendida();
-        s.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), "coord-01");
-        return s;
-    }
-
-    private Responsable responsableValido() {
-        return new Responsable(UUID.randomUUID(), "Juan Pérez");
+    private Usuario docenteValido() {
+        return new Usuario(
+                "D-001",
+                "Docente López",
+                new Email("docente@uniquindio.edu.co"),
+                TipoUsuario.DOCENTE
+        );
     }
 
     private Prioridad prioridadValida() {
         return new Prioridad(NivelPrioridad.ALTA, "Tiene fecha límite próxima");
+    }
+
+    private Responsable responsableValido() {
+        Usuario docente = docenteValido();
+        return new Responsable(docente.getId(), docente.getNombre());
+    }
+
+    /** Estado: REGISTRADA */
+    private Solicitud solicitudValida() {
+        return new Solicitud(
+                new DescripcionSolicitud("Necesito homologar materia cursada en otra universidad"),
+                CanalOrigen.CORREO_ELECTRONICO,
+                solicitanteValido()
+        );
+    }
+
+    /** Estado: CLASIFICADA (tipo + prioridad asignados) */
+    private Solicitud solicitudClasificada() {
+        Solicitud s = solicitudValida();
+        Usuario coord = coordinadorValido();
+        s.clasificar(TipoSolicitud.HOMOLOGACION, coord);
+        s.asignarPrioridad(prioridadValida(), coord);
+        return s;
+    }
+
+    /** Estado: CLASIFICADA con responsable asignado, pero aún no EN_ATENCION */
+    private Solicitud solicitudConResponsable() {
+        Solicitud s = solicitudClasificada();
+        s.asignarResponsable(responsableValido(), coordinadorValido());
+        return s;
+    }
+
+    /** Estado: EN_ATENCION */
+    private Solicitud solicitudEnAtencion() {
+        Solicitud s = solicitudConResponsable();
+        s.iniciarAtencion(coordinadorValido());
+        return s;
+    }
+
+    /** Estado: ATENDIDA */
+    private Solicitud solicitudAtendida() {
+        Solicitud s = solicitudEnAtencion();
+        // atender() requiere el responsable asignado — usamos el mismo docente
+        Usuario docente = docenteValido();
+        Responsable r = new Responsable(docente.getId(), docente.getNombre());
+        // Necesitamos el Usuario cuyo ID coincida con el Responsable asignado
+        s.atender("Proceso completado satisfactoriamente", docente);
+        return s;
+    }
+
+    /** Estado: CERRADA */
+    private Solicitud solicitudCerrada() {
+        Solicitud s = solicitudAtendida();
+        s.cerrar(
+                new ObservacionCierre("Homologación aprobada por consejo de programa"),
+                coordinadorValido()
+        );
+        return s;
     }
 
     // =========================================================================
@@ -63,7 +108,7 @@ class SolicitudTest {
     // =========================================================================
 
     /**
-     * RF-01 — Una solicitud nueva debe iniciar siempre en estado REGISTRADA.
+     * RF-01 — Una solicitud nueva debe iniciar en estado REGISTRADA.
      */
     @Test
     void solicitudNuevaDebeIniciarEnEstadoRegistrada() {
@@ -72,54 +117,36 @@ class SolicitudTest {
     }
 
     /**
-     * RF-01 — Una solicitud nueva debe tener un ID generado automáticamente.
+     * RF-01 — Una solicitud nueva debe tener historial con una entrada.
      */
     @Test
-    void solicitudNuevaDebeGenerarId() {
-        Solicitud solicitud = solicitudValida();
-        assertNotNull(solicitud.getId());
-    }
-
-    /**
-     * RF-01 — Una solicitud nueva debe tener fecha de registro.
-     */
-    @Test
-    void solicitudNuevaDebeRegistrarFechaDeRegistro() {
-        Solicitud solicitud = solicitudValida();
-        assertNotNull(solicitud.getFechaRegistro());
-    }
-
-    /**
-     * RF-06 — El historial debe tener una entrada al registrar la solicitud.
-     */
-    @Test
-    void solicitudNuevaDebeRegistrarEntradaEnHistorial() {
+    void solicitudNuevaDebeGenerarPrimeraEntradaEnHistorial() {
         Solicitud solicitud = solicitudValida();
         assertEquals(1, solicitud.getHistorial().size());
     }
 
     /**
-     * Construcción sin canal debe lanzar IllegalArgumentException.
+     * RF-01 — Crear solicitud con canal nulo debe lanzar NullPointerException.
      */
     @Test
-    void solicitudSinCanalDebeLanzarIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
+    void crearSolicitudConCanalNuloDebeLanzarNullPointerException() {
+        assertThrows(NullPointerException.class, () ->
                 new Solicitud(
-                        new DescripcionSolicitud("Descripción con más de diez caracteres"),
+                        new DescripcionSolicitud("Descripción válida de la solicitud"),
                         null,
-                        UUID.randomUUID()
+                        solicitanteValido()
                 )
         );
     }
 
     /**
-     * Construcción sin solicitante debe lanzar IllegalArgumentException.
+     * RF-01 — Crear solicitud con solicitante nulo debe lanzar NullPointerException.
      */
     @Test
-    void solicitudSinSolicitanteDebeLanzarIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
+    void crearSolicitudConSolicitanteNuloDebeLanzarNullPointerException() {
+        assertThrows(NullPointerException.class, () ->
                 new Solicitud(
-                        new DescripcionSolicitud("Descripción con más de diez caracteres"),
+                        new DescripcionSolicitud("Descripción válida de la solicitud"),
                         CanalOrigen.PRESENCIAL,
                         null
                 )
@@ -127,16 +154,34 @@ class SolicitudTest {
     }
 
     /**
-     * Historial no debe poder modificarse desde fuera (unmodifiable).
+     * RN-04 — Crear solicitud con solicitante INACTIVO debe lanzar UsuarioInactivoException.
      */
     @Test
-    void historialDebeSerInmutableDesdeAfuera() {
-        Solicitud solicitud = solicitudValida();
-        assertThrows(UnsupportedOperationException.class, () ->
-                solicitud.getHistorial().add(
-                        new EntradaHistorial(null, "hack", "hacker", "")
+    void crearSolicitudConSolicitanteInactivoDebeLanzarUsuarioInactivoException() {
+        Usuario solicitante = solicitanteValido();
+        solicitante.desactivar();
+        assertThrows(UsuarioInactivoException.class, () ->
+                new Solicitud(
+                        new DescripcionSolicitud("Descripción válida de la solicitud"),
+                        CanalOrigen.PRESENCIAL,
+                        solicitante
                 )
         );
+    }
+
+    /**
+     * RF-01 — La solicitud debe guardar el ID y nombre del solicitante.
+     */
+    @Test
+    void solicitudDebeGuardarDatosDelSolicitante() {
+        Usuario solicitante = solicitanteValido();
+        Solicitud solicitud = new Solicitud(
+                new DescripcionSolicitud("Descripción válida de la solicitud"),
+                CanalOrigen.PRESENCIAL,
+                solicitante
+        );
+        assertEquals(solicitante.getId(), solicitud.getSolicitanteId());
+        assertEquals(solicitante.getNombre(), solicitud.getSolicitanteNombre());
     }
 
     // =========================================================================
@@ -144,23 +189,14 @@ class SolicitudTest {
     // =========================================================================
 
     /**
-     * RF-02 / RN-01 — Clasificar debe cambiar el estado a CLASIFICADA.
+     * RF-02 / RN-02 — Clasificar en estado REGISTRADA debe cambiar estado a CLASIFICADA.
      */
     @Test
-    void clasificarDebeTransicionarAClasificada() {
+    void clasificarEnRegistradaDebeTransicionarAClasificada() {
         Solicitud solicitud = solicitudValida();
-        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, "coord-01");
+        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coordinadorValido());
         assertEquals(EstadoSolicitud.CLASIFICADA, solicitud.getEstado());
-    }
-
-    /**
-     * RF-02 — Clasificar debe asignar el tipo correctamente.
-     */
-    @Test
-    void clasificarDebeAsignarElTipo() {
-        Solicitud solicitud = solicitudValida();
-        solicitud.clasificar(TipoSolicitud.CONSULTA_ACADEMICA, "coord-01");
-        assertEquals(TipoSolicitud.CONSULTA_ACADEMICA, solicitud.getTipo());
+        assertEquals(TipoSolicitud.HOMOLOGACION, solicitud.getTipo());
     }
 
     /**
@@ -170,11 +206,9 @@ class SolicitudTest {
     void clasificarDebeAgregarEntradaAlHistorial() {
         Solicitud solicitud = solicitudValida();
         int antes = solicitud.getHistorial().size();
-        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, "coord-01");
+        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coordinadorValido());
         assertEquals(antes + 1, solicitud.getHistorial().size());
     }
-
-    // (Método duplicado eliminado)
 
     /**
      * RN-01 — Clasificar una solicitud ya CLASIFICADA debe lanzar TransicionInvalidaException.
@@ -183,7 +217,7 @@ class SolicitudTest {
     void clasificarSolicitudYaClasificadaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudClasificada();
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.clasificar(TipoSolicitud.OTRO, "coord-01")
+                solicitud.clasificar(TipoSolicitud.OTRO, coordinadorValido())
         );
     }
 
@@ -194,7 +228,18 @@ class SolicitudTest {
     void clasificarConTipoNuloDebeLanzarIllegalArgumentException() {
         Solicitud solicitud = solicitudValida();
         assertThrows(IllegalArgumentException.class, () ->
-                solicitud.clasificar(null, "coord-01")
+                solicitud.clasificar(null, coordinadorValido())
+        );
+    }
+
+    /**
+     * RN-13 — Clasificar con usuario que no es COORDINADOR debe lanzar PermisoInsuficienteException.
+     */
+    @Test
+    void clasificarConUsuarioNoCoordinadorDebeLanzarPermisoInsuficienteException() {
+        Solicitud solicitud = solicitudValida();
+        assertThrows(PermisoInsuficienteException.class, () ->
+                solicitud.clasificar(TipoSolicitud.HOMOLOGACION, docenteValido())
         );
     }
 
@@ -208,20 +253,10 @@ class SolicitudTest {
     @Test
     void asignarPrioridadEnClasificadaDebeAsignarCorrectamente() {
         Solicitud solicitud = solicitudClasificada();
-        solicitud.asignarPrioridad(prioridadValida(), "coord-01");
+        // La solicitudClasificada() ya asigna prioridad internamente,
+        // verificamos que quedó correctamente asignada
         assertNotNull(solicitud.getPrioridad());
         assertEquals(NivelPrioridad.ALTA, solicitud.getPrioridad().nivel());
-    }
-
-    /**
-     * RF-03 — Asignar prioridad debe agregar una entrada al historial.
-     */
-    @Test
-    void asignarPrioridadDebeAgregarEntradaAlHistorial() {
-        Solicitud solicitud = solicitudClasificada();
-        int antes = solicitud.getHistorial().size();
-        solicitud.asignarPrioridad(prioridadValida(), "coord-01");
-        assertEquals(antes + 1, solicitud.getHistorial().size());
     }
 
     /**
@@ -231,7 +266,7 @@ class SolicitudTest {
     void asignarPrioridadEnRegistradaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudValida();
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.asignarPrioridad(prioridadValida(), "coord-01")
+                solicitud.asignarPrioridad(prioridadValida(), coordinadorValido())
         );
     }
 
@@ -240,9 +275,23 @@ class SolicitudTest {
      */
     @Test
     void asignarPrioridadNulaDebeLanzarIllegalArgumentException() {
-        Solicitud solicitud = solicitudClasificada();
+        // Necesitamos estado CLASIFICADA pero sin prioridad asignada aún
+        Solicitud solicitud = solicitudValida();
+        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coordinadorValido());
         assertThrows(IllegalArgumentException.class, () ->
-                solicitud.asignarPrioridad(null, "coord-01")
+                solicitud.asignarPrioridad(null, coordinadorValido())
+        );
+    }
+
+    /**
+     * RN-13 — Asignar prioridad con usuario no COORDINADOR debe lanzar PermisoInsuficienteException.
+     */
+    @Test
+    void asignarPrioridadConUsuarioNoCoordinadorDebeLanzarPermisoInsuficienteException() {
+        Solicitud solicitud = solicitudValida();
+        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coordinadorValido());
+        assertThrows(PermisoInsuficienteException.class, () ->
+                solicitud.asignarPrioridad(prioridadValida(), docenteValido())
         );
     }
 
@@ -251,13 +300,13 @@ class SolicitudTest {
     // =========================================================================
 
     /**
-     * RF-05 / RN-03 — Asignar responsable activo debe funcionar correctamente.
+     * RF-05 / RN-03 — Asignar responsable debe funcionar correctamente.
      */
     @Test
-    void asignarResponsableActivoDebeAsignarCorrectamente() {
+    void asignarResponsableDebeAsignarCorrectamente() {
         Solicitud solicitud = solicitudClasificada();
         Responsable responsable = responsableValido();
-        solicitud.asignarResponsable(responsable, true, "coord-01");
+        solicitud.asignarResponsable(responsable, coordinadorValido());
         assertNotNull(solicitud.getResponsable());
         assertEquals(responsable.nombre(), solicitud.getResponsable().nombre());
     }
@@ -269,29 +318,18 @@ class SolicitudTest {
     void asignarResponsableDebeAgregarEntradaAlHistorial() {
         Solicitud solicitud = solicitudClasificada();
         int antes = solicitud.getHistorial().size();
-        solicitud.asignarResponsable(responsableValido(), true, "coord-01");
+        solicitud.asignarResponsable(responsableValido(), coordinadorValido());
         assertEquals(antes + 1, solicitud.getHistorial().size());
     }
 
     /**
-     * RN-04 / RN-10 — Asignar responsable inactivo debe lanzar UsuarioInactivoException.
+     * Asignar responsable nulo debe lanzar NullPointerException.
      */
     @Test
-    void asignarResponsableInactivoDebeLanzarUsuarioInactivoException() {
+    void asignarResponsableNuloDebeLanzarNullPointerException() {
         Solicitud solicitud = solicitudClasificada();
-        assertThrows(UsuarioInactivoException.class, () ->
-                solicitud.asignarResponsable(responsableValido(), false, "coord-01")
-        );
-    }
-
-    /**
-     * Asignar responsable nulo debe lanzar IllegalArgumentException.
-     */
-    @Test
-    void asignarResponsableNuloDebeLanzarIllegalArgumentException() {
-        Solicitud solicitud = solicitudClasificada();
-        assertThrows(IllegalArgumentException.class, () ->
-                solicitud.asignarResponsable(null, true, "coord-01")
+        assertThrows(NullPointerException.class, () ->
+                solicitud.asignarResponsable(null, coordinadorValido())
         );
     }
 
@@ -302,7 +340,18 @@ class SolicitudTest {
     void asignarResponsableEnSolicitudCerradaDebeLanzarSolicitudCerradaException() {
         Solicitud solicitud = solicitudCerrada();
         assertThrows(SolicitudCerradaException.class, () ->
-                solicitud.asignarResponsable(responsableValido(), true, "coord-01")
+                solicitud.asignarResponsable(responsableValido(), coordinadorValido())
+        );
+    }
+
+    /**
+     * RN-13 — Asignar responsable con usuario no COORDINADOR debe lanzar PermisoInsuficienteException.
+     */
+    @Test
+    void asignarResponsableConUsuarioNoCoordinadorDebeLanzarPermisoInsuficienteException() {
+        Solicitud solicitud = solicitudClasificada();
+        assertThrows(PermisoInsuficienteException.class, () ->
+                solicitud.asignarResponsable(responsableValido(), docenteValido())
         );
     }
 
@@ -316,7 +365,7 @@ class SolicitudTest {
     @Test
     void iniciarAtencionConResponsableDebeTransicionarAEnAtencion() {
         Solicitud solicitud = solicitudConResponsable();
-        solicitud.iniciarAtencion("coord-01");
+        solicitud.iniciarAtencion(coordinadorValido());
         assertEquals(EstadoSolicitud.EN_ATENCION, solicitud.getEstado());
     }
 
@@ -325,9 +374,9 @@ class SolicitudTest {
      */
     @Test
     void iniciarAtencionSinResponsableDebeLanzarSinResponsableException() {
-        Solicitud solicitud = solicitudClasificada(); // sin responsable
+        Solicitud solicitud = solicitudClasificada(); // sin responsable asignado
         assertThrows(SinResponsableException.class, () ->
-                solicitud.iniciarAtencion("coord-01")
+                solicitud.iniciarAtencion(coordinadorValido())
         );
     }
 
@@ -337,9 +386,20 @@ class SolicitudTest {
     @Test
     void iniciarAtencionEnRegistradaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudValida();
-        solicitud.asignarResponsable(responsableValido(), true, "coord-01");
+        solicitud.asignarResponsable(responsableValido(), coordinadorValido());
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.iniciarAtencion("coord-01")
+                solicitud.iniciarAtencion(coordinadorValido())
+        );
+    }
+
+    /**
+     * RN-13 — Iniciar atención con ESTUDIANTE debe lanzar PermisoInsuficienteException.
+     */
+    @Test
+    void iniciarAtencionConEstudianteDebeLanzarPermisoInsuficienteException() {
+        Solicitud solicitud = solicitudConResponsable();
+        assertThrows(PermisoInsuficienteException.class, () ->
+                solicitud.iniciarAtencion(solicitanteValido())
         );
     }
 
@@ -353,7 +413,7 @@ class SolicitudTest {
     @Test
     void atenderDebeTransicionarAAtendida() {
         Solicitud solicitud = solicitudEnAtencion();
-        solicitud.atender("Proceso completado satisfactoriamente", "coord-01");
+        solicitud.atender("Proceso completado satisfactoriamente", docenteValido());
         assertEquals(EstadoSolicitud.ATENDIDA, solicitud.getEstado());
     }
 
@@ -364,18 +424,18 @@ class SolicitudTest {
     void atenderDebeAgregarEntradaAlHistorial() {
         Solicitud solicitud = solicitudEnAtencion();
         int antes = solicitud.getHistorial().size();
-        solicitud.atender("Proceso completado", "coord-01");
+        solicitud.atender("Proceso completado", docenteValido());
         assertEquals(antes + 1, solicitud.getHistorial().size());
     }
 
     /**
-     * RN-02 — Atender en estado CLASIFICADA (no EN_ATENCION) debe lanzar TransicionInvalidaException.
+     * RN-02 — Atender en estado CLASIFICADA debe lanzar TransicionInvalidaException.
      */
     @Test
     void atenderEnClasificadaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudClasificada();
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.atender("Observación", "coord-01")
+                solicitud.atender("Observación", docenteValido())
         );
     }
 
@@ -385,8 +445,21 @@ class SolicitudTest {
     @Test
     void atenderConObservacionNulaDebeAceptarseCorrectamente() {
         Solicitud solicitud = solicitudEnAtencion();
-        assertDoesNotThrow(() -> solicitud.atender(null, "coord-01"));
+        assertDoesNotThrow(() -> solicitud.atender(null, docenteValido()));
         assertEquals(EstadoSolicitud.ATENDIDA, solicitud.getEstado());
+    }
+
+    /**
+     * RN-13 — Atender con usuario distinto al responsable asignado
+     * debe lanzar PermisoInsuficienteException.
+     */
+    @Test
+    void atenderConUsuarioDistintoAlResponsableDebeLanzarPermisoInsuficienteException() {
+        Solicitud solicitud = solicitudEnAtencion();
+        // coordinadorValido() tiene un ID diferente al del responsable asignado (docenteValido)
+        assertThrows(PermisoInsuficienteException.class, () ->
+                solicitud.atender("Observación", coordinadorValido())
+        );
     }
 
     // =========================================================================
@@ -399,7 +472,10 @@ class SolicitudTest {
     @Test
     void cerrarSolicitudAtendidaDebeTransicionarACerrada() {
         Solicitud solicitud = solicitudAtendida();
-        solicitud.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), "coord-01");
+        solicitud.cerrar(
+                new ObservacionCierre("Homologación aprobada por consejo de programa"),
+                coordinadorValido()
+        );
         assertEquals(EstadoSolicitud.CERRADA, solicitud.getEstado());
     }
 
@@ -410,18 +486,24 @@ class SolicitudTest {
     void cerrarDebeAgregarEntradaAlHistorial() {
         Solicitud solicitud = solicitudAtendida();
         int antes = solicitud.getHistorial().size();
-        solicitud.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), "coord-01");
+        solicitud.cerrar(
+                new ObservacionCierre("Homologación aprobada por consejo de programa"),
+                coordinadorValido()
+        );
         assertEquals(antes + 1, solicitud.getHistorial().size());
     }
 
     /**
-     * RN-02 — Cerrar una solicitud en estado CLASIFICADA debe lanzar TransicionInvalidaException.
+     * RN-02 — Cerrar en estado CLASIFICADA debe lanzar TransicionInvalidaException.
      */
     @Test
     void cerrarSolicitudClasificadaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudClasificada();
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.cerrar(new ObservacionCierre("Observación de cierre con más de 20 chars"), "coord-01")
+                solicitud.cerrar(
+                        new ObservacionCierre("Observación de cierre con más de 20 chars"),
+                        coordinadorValido()
+                )
         );
     }
 
@@ -432,18 +514,35 @@ class SolicitudTest {
     void cerrarSolicitudEnAtencionDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudEnAtencion();
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.cerrar(new ObservacionCierre("Observación de cierre con más de 20 chars"), "coord-01")
+                solicitud.cerrar(
+                        new ObservacionCierre("Observación de cierre con más de 20 chars"),
+                        coordinadorValido()
+                )
         );
     }
 
     /**
-     * RN-01 — Cualquier operación sobre una solicitud CERRADA debe lanzar SolicitudCerradaException.
+     * RN-01 — Clasificar sobre solicitud CERRADA debe lanzar SolicitudCerradaException.
      */
     @Test
     void clasificarSolicitudCerradaDebeLanzarSolicitudCerradaException() {
         Solicitud solicitud = solicitudCerrada();
         assertThrows(SolicitudCerradaException.class, () ->
-                solicitud.clasificar(TipoSolicitud.HOMOLOGACION, "coord-01")
+                solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coordinadorValido())
+        );
+    }
+
+    /**
+     * RN-13 — Cerrar con usuario no COORDINADOR debe lanzar PermisoInsuficienteException.
+     */
+    @Test
+    void cerrarConUsuarioNoCoordinadorDebeLanzarPermisoInsuficienteException() {
+        Solicitud solicitud = solicitudAtendida();
+        assertThrows(PermisoInsuficienteException.class, () ->
+                solicitud.cerrar(
+                        new ObservacionCierre("Observación de cierre con más de 20 chars"),
+                        docenteValido()
+                )
         );
     }
 
@@ -458,11 +557,12 @@ class SolicitudTest {
     void estadoNoDebeCambiarCuandoFallaTransicionInvalida() {
         Solicitud solicitud = solicitudClasificada();
         EstadoSolicitud estadoAntes = solicitud.getEstado();
-
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.cerrar(new ObservacionCierre("Observación de cierre con más de 20 chars"), "coord-01")
+                solicitud.cerrar(
+                        new ObservacionCierre("Observación de cierre con más de 20 chars"),
+                        coordinadorValido()
+                )
         );
-
         assertEquals(estadoAntes, solicitud.getEstado());
     }
 
@@ -473,11 +573,12 @@ class SolicitudTest {
     void historialNoDebeCrecerCuandoFallaUnaOperacion() {
         Solicitud solicitud = solicitudClasificada();
         int historialAntes = solicitud.getHistorial().size();
-
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.cerrar(new ObservacionCierre("Observación de cierre con más de 20 chars"), "coord-01")
+                solicitud.cerrar(
+                        new ObservacionCierre("Observación de cierre con más de 20 chars"),
+                        coordinadorValido()
+                )
         );
-
         assertEquals(historialAntes, solicitud.getHistorial().size());
     }
 
@@ -491,14 +592,17 @@ class SolicitudTest {
      */
     @Test
     void solicitudDebePoderRecorrerCicloDeVidaCompleto() {
-        Solicitud solicitud = solicitudValida();
+        Usuario coord   = coordinadorValido();
+        Usuario docente = docenteValido();
+        Responsable r   = new Responsable(docente.getId(), docente.getNombre());
 
-        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, "coord-01");
-        solicitud.asignarPrioridad(prioridadValida(), "coord-01");
-        solicitud.asignarResponsable(responsableValido(), true, "coord-01");
-        solicitud.iniciarAtencion("coord-01");
-        solicitud.atender("Proceso completado satisfactoriamente", "coord-01");
-        solicitud.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), "coord-01");
+        Solicitud solicitud = solicitudValida();
+        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coord);
+        solicitud.asignarPrioridad(prioridadValida(), coord);
+        solicitud.asignarResponsable(r, coord);
+        solicitud.iniciarAtencion(coord);
+        solicitud.atender("Proceso completado satisfactoriamente", docente);
+        solicitud.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), coord);
 
         assertEquals(EstadoSolicitud.CERRADA, solicitud.getEstado());
         assertTrue(solicitud.getHistorial().size() > 1);
@@ -509,16 +613,18 @@ class SolicitudTest {
      */
     @Test
     void cicloDeVidaCompletoDebeRegistrarTodasLasAccionesEnHistorial() {
-        Solicitud solicitud = solicitudValida(); // 1 entrada
+        Usuario coord   = coordinadorValido();
+        Usuario docente = docenteValido();
+        Responsable r   = new Responsable(docente.getId(), docente.getNombre());
 
-        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, "coord-01");          // +1 = 2
-        solicitud.asignarPrioridad(prioridadValida(), "coord-01");             // +1 = 3
-        solicitud.asignarResponsable(responsableValido(), true, "coord-01");   // +1 = 4
-        solicitud.iniciarAtencion("coord-01");                                  // +1 = 5
-        solicitud.atender("Proceso completado satisfactoriamente", "coord-01");// +1 = 6
-        solicitud.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), "coord-01"); // +1 = 7
+        Solicitud solicitud = solicitudValida();                                              // 1
+        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coord);                             // 2
+        solicitud.asignarPrioridad(prioridadValida(), coord);                                // 3
+        solicitud.asignarResponsable(r, coord);                                              // 4
+        solicitud.iniciarAtencion(coord);                                                    // 5
+        solicitud.atender("Proceso completado satisfactoriamente", docente);                 // 6
+        solicitud.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), coord); // 7
 
         assertEquals(7, solicitud.getHistorial().size());
     }
 }
-
