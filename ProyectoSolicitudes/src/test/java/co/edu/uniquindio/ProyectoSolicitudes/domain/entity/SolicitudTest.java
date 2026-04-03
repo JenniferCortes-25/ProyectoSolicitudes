@@ -11,6 +11,17 @@ import static org.junit.jupiter.api.Assertions.*;
 class SolicitudTest {
 
     // =========================================================================
+    // INSTANCIAS FIJAS — evitan el problema de UUID diferente en cada llamada
+    // =========================================================================
+
+    private final Usuario DOCENTE_FIJO = new Usuario(
+            "D-001",
+            "Docente López",
+            new Email("docente@uniquindio.edu.co"),
+            TipoUsuario.DOCENTE
+    );
+
+    // =========================================================================
     // HELPERS
     // =========================================================================
 
@@ -32,22 +43,18 @@ class SolicitudTest {
         );
     }
 
+    // Siempre devuelve la misma instancia — mismo UUID garantizado
     private Usuario docenteValido() {
-        return new Usuario(
-                "D-001",
-                "Docente López",
-                new Email("docente@uniquindio.edu.co"),
-                TipoUsuario.DOCENTE
-        );
+        return DOCENTE_FIJO;
     }
 
     private Prioridad prioridadValida() {
         return new Prioridad(NivelPrioridad.ALTA, "Tiene fecha límite próxima");
     }
 
+    // Usa DOCENTE_FIJO para que el UUID coincida con docenteValido()
     private Responsable responsableValido() {
-        Usuario docente = docenteValido();
-        return new Responsable(docente.getId(), docente.getNombre());
+        return new Responsable(DOCENTE_FIJO.getId(), DOCENTE_FIJO.getNombre());
     }
 
     /** Estado: REGISTRADA */
@@ -85,11 +92,8 @@ class SolicitudTest {
     /** Estado: ATENDIDA */
     private Solicitud solicitudAtendida() {
         Solicitud s = solicitudEnAtencion();
-        // atender() requiere el responsable asignado — usamos el mismo docente
-        Usuario docente = docenteValido();
-        Responsable r = new Responsable(docente.getId(), docente.getNombre());
-        // Necesitamos el Usuario cuyo ID coincida con el Responsable asignado
-        s.atender("Proceso completado satisfactoriamente", docente);
+        // DOCENTE_FIJO tiene el mismo UUID que el Responsable asignado — coincide correctamente
+        s.atender("Proceso completado satisfactoriamente", DOCENTE_FIJO);
         return s;
     }
 
@@ -107,27 +111,18 @@ class SolicitudTest {
     // CONSTRUCCIÓN
     // =========================================================================
 
-    /**
-     * RF-01 — Una solicitud nueva debe iniciar en estado REGISTRADA.
-     */
     @Test
     void solicitudNuevaDebeIniciarEnEstadoRegistrada() {
         Solicitud solicitud = solicitudValida();
         assertEquals(EstadoSolicitud.REGISTRADA, solicitud.getEstado());
     }
 
-    /**
-     * RF-01 — Una solicitud nueva debe tener historial con una entrada.
-     */
     @Test
     void solicitudNuevaDebeGenerarPrimeraEntradaEnHistorial() {
         Solicitud solicitud = solicitudValida();
         assertEquals(1, solicitud.getHistorial().size());
     }
 
-    /**
-     * RF-01 — Crear solicitud con canal nulo debe lanzar NullPointerException.
-     */
     @Test
     void crearSolicitudConCanalNuloDebeLanzarNullPointerException() {
         assertThrows(NullPointerException.class, () ->
@@ -139,9 +134,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RF-01 — Crear solicitud con solicitante nulo debe lanzar NullPointerException.
-     */
     @Test
     void crearSolicitudConSolicitanteNuloDebeLanzarNullPointerException() {
         assertThrows(NullPointerException.class, () ->
@@ -153,9 +145,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-04 — Crear solicitud con solicitante INACTIVO debe lanzar UsuarioInactivoException.
-     */
     @Test
     void crearSolicitudConSolicitanteInactivoDebeLanzarUsuarioInactivoException() {
         Usuario solicitante = solicitanteValido();
@@ -169,9 +158,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RF-01 — La solicitud debe guardar el ID y nombre del solicitante.
-     */
     @Test
     void solicitudDebeGuardarDatosDelSolicitante() {
         Usuario solicitante = solicitanteValido();
@@ -188,9 +174,6 @@ class SolicitudTest {
     // CLASIFICAR
     // =========================================================================
 
-    /**
-     * RF-02 / RN-02 — Clasificar en estado REGISTRADA debe cambiar estado a CLASIFICADA.
-     */
     @Test
     void clasificarEnRegistradaDebeTransicionarAClasificada() {
         Solicitud solicitud = solicitudValida();
@@ -199,9 +182,6 @@ class SolicitudTest {
         assertEquals(TipoSolicitud.HOMOLOGACION, solicitud.getTipo());
     }
 
-    /**
-     * RF-02 — Clasificar debe agregar una entrada al historial.
-     */
     @Test
     void clasificarDebeAgregarEntradaAlHistorial() {
         Solicitud solicitud = solicitudValida();
@@ -210,9 +190,6 @@ class SolicitudTest {
         assertEquals(antes + 1, solicitud.getHistorial().size());
     }
 
-    /**
-     * RN-01 — Clasificar una solicitud ya CLASIFICADA debe lanzar TransicionInvalidaException.
-     */
     @Test
     void clasificarSolicitudYaClasificadaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudClasificada();
@@ -221,9 +198,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * Clasificar con tipo nulo debe lanzar IllegalArgumentException.
-     */
     @Test
     void clasificarConTipoNuloDebeLanzarIllegalArgumentException() {
         Solicitud solicitud = solicitudValida();
@@ -232,9 +206,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-13 — Clasificar con usuario que no es COORDINADOR debe lanzar PermisoInsuficienteException.
-     */
     @Test
     void clasificarConUsuarioNoCoordinadorDebeLanzarPermisoInsuficienteException() {
         Solicitud solicitud = solicitudValida();
@@ -247,21 +218,13 @@ class SolicitudTest {
     // ASIGNAR PRIORIDAD
     // =========================================================================
 
-    /**
-     * RF-03 / RN-02 — Asignar prioridad en estado CLASIFICADA debe funcionar.
-     */
     @Test
     void asignarPrioridadEnClasificadaDebeAsignarCorrectamente() {
         Solicitud solicitud = solicitudClasificada();
-        // La solicitudClasificada() ya asigna prioridad internamente,
-        // verificamos que quedó correctamente asignada
         assertNotNull(solicitud.getPrioridad());
         assertEquals(NivelPrioridad.ALTA, solicitud.getPrioridad().nivel());
     }
 
-    /**
-     * RN-02 — Asignar prioridad en estado REGISTRADA debe lanzar TransicionInvalidaException.
-     */
     @Test
     void asignarPrioridadEnRegistradaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudValida();
@@ -270,12 +233,9 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * Asignar prioridad nula debe lanzar IllegalArgumentException.
-     */
     @Test
     void asignarPrioridadNulaDebeLanzarIllegalArgumentException() {
-        // Necesitamos estado CLASIFICADA pero sin prioridad asignada aún
+        // clasificar sin asignar prioridad para quedar en CLASIFICADA limpia
         Solicitud solicitud = solicitudValida();
         solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coordinadorValido());
         assertThrows(IllegalArgumentException.class, () ->
@@ -283,9 +243,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-13 — Asignar prioridad con usuario no COORDINADOR debe lanzar PermisoInsuficienteException.
-     */
     @Test
     void asignarPrioridadConUsuarioNoCoordinadorDebeLanzarPermisoInsuficienteException() {
         Solicitud solicitud = solicitudValida();
@@ -299,9 +256,6 @@ class SolicitudTest {
     // ASIGNAR RESPONSABLE
     // =========================================================================
 
-    /**
-     * RF-05 / RN-03 — Asignar responsable debe funcionar correctamente.
-     */
     @Test
     void asignarResponsableDebeAsignarCorrectamente() {
         Solicitud solicitud = solicitudClasificada();
@@ -311,9 +265,6 @@ class SolicitudTest {
         assertEquals(responsable.nombre(), solicitud.getResponsable().nombre());
     }
 
-    /**
-     * RF-05 — Asignar responsable debe agregar una entrada al historial.
-     */
     @Test
     void asignarResponsableDebeAgregarEntradaAlHistorial() {
         Solicitud solicitud = solicitudClasificada();
@@ -322,9 +273,6 @@ class SolicitudTest {
         assertEquals(antes + 1, solicitud.getHistorial().size());
     }
 
-    /**
-     * Asignar responsable nulo debe lanzar NullPointerException.
-     */
     @Test
     void asignarResponsableNuloDebeLanzarNullPointerException() {
         Solicitud solicitud = solicitudClasificada();
@@ -333,9 +281,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-01 — Asignar responsable en solicitud cerrada debe lanzar SolicitudCerradaException.
-     */
     @Test
     void asignarResponsableEnSolicitudCerradaDebeLanzarSolicitudCerradaException() {
         Solicitud solicitud = solicitudCerrada();
@@ -344,9 +289,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-13 — Asignar responsable con usuario no COORDINADOR debe lanzar PermisoInsuficienteException.
-     */
     @Test
     void asignarResponsableConUsuarioNoCoordinadorDebeLanzarPermisoInsuficienteException() {
         Solicitud solicitud = solicitudClasificada();
@@ -359,9 +301,6 @@ class SolicitudTest {
     // INICIAR ATENCIÓN
     // =========================================================================
 
-    /**
-     * RN-02 / RN-05 — Iniciar atención con responsable asignado debe cambiar estado a EN_ATENCION.
-     */
     @Test
     void iniciarAtencionConResponsableDebeTransicionarAEnAtencion() {
         Solicitud solicitud = solicitudConResponsable();
@@ -369,22 +308,19 @@ class SolicitudTest {
         assertEquals(EstadoSolicitud.EN_ATENCION, solicitud.getEstado());
     }
 
-    /**
-     * RN-05 — Iniciar atención sin responsable debe lanzar SinResponsableException.
-     */
     @Test
     void iniciarAtencionSinResponsableDebeLanzarSinResponsableException() {
-        Solicitud solicitud = solicitudClasificada(); // sin responsable asignado
+        Solicitud solicitud = solicitudClasificada();
         assertThrows(SinResponsableException.class, () ->
                 solicitud.iniciarAtencion(coordinadorValido())
         );
     }
 
-    /**
-     * RN-02 — Iniciar atención en estado REGISTRADA debe lanzar TransicionInvalidaException.
-     */
     @Test
     void iniciarAtencionEnRegistradaDebeLanzarTransicionInvalidaException() {
+        // solicitudValida() está en REGISTRADA — asignamos responsable pero
+        // no podemos porque asignarResponsable no valida el estado,
+        // pero iniciarAtencion sí exige CLASIFICADA
         Solicitud solicitud = solicitudValida();
         solicitud.asignarResponsable(responsableValido(), coordinadorValido());
         assertThrows(TransicionInvalidaException.class, () ->
@@ -392,9 +328,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-13 — Iniciar atención con ESTUDIANTE debe lanzar PermisoInsuficienteException.
-     */
     @Test
     void iniciarAtencionConEstudianteDebeLanzarPermisoInsuficienteException() {
         Solicitud solicitud = solicitudConResponsable();
@@ -407,56 +340,40 @@ class SolicitudTest {
     // ATENDER
     // =========================================================================
 
-    /**
-     * RN-02 — Atender debe cambiar el estado a ATENDIDA.
-     */
     @Test
     void atenderDebeTransicionarAAtendida() {
         Solicitud solicitud = solicitudEnAtencion();
-        solicitud.atender("Proceso completado satisfactoriamente", docenteValido());
+        solicitud.atender("Proceso completado satisfactoriamente", DOCENTE_FIJO);
         assertEquals(EstadoSolicitud.ATENDIDA, solicitud.getEstado());
     }
 
-    /**
-     * Atender debe agregar una entrada al historial.
-     */
     @Test
     void atenderDebeAgregarEntradaAlHistorial() {
         Solicitud solicitud = solicitudEnAtencion();
         int antes = solicitud.getHistorial().size();
-        solicitud.atender("Proceso completado", docenteValido());
+        solicitud.atender("Proceso completado", DOCENTE_FIJO);
         assertEquals(antes + 1, solicitud.getHistorial().size());
     }
 
-    /**
-     * RN-02 — Atender en estado CLASIFICADA debe lanzar TransicionInvalidaException.
-     */
     @Test
     void atenderEnClasificadaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudClasificada();
         assertThrows(TransicionInvalidaException.class, () ->
-                solicitud.atender("Observación", docenteValido())
+                solicitud.atender("Observación", DOCENTE_FIJO)
         );
     }
 
-    /**
-     * Atender con observación nula no debe lanzar excepción (se acepta null).
-     */
     @Test
     void atenderConObservacionNulaDebeAceptarseCorrectamente() {
         Solicitud solicitud = solicitudEnAtencion();
-        assertDoesNotThrow(() -> solicitud.atender(null, docenteValido()));
+        assertDoesNotThrow(() -> solicitud.atender(null, DOCENTE_FIJO));
         assertEquals(EstadoSolicitud.ATENDIDA, solicitud.getEstado());
     }
 
-    /**
-     * RN-13 — Atender con usuario distinto al responsable asignado
-     * debe lanzar PermisoInsuficienteException.
-     */
     @Test
     void atenderConUsuarioDistintoAlResponsableDebeLanzarPermisoInsuficienteException() {
         Solicitud solicitud = solicitudEnAtencion();
-        // coordinadorValido() tiene un ID diferente al del responsable asignado (docenteValido)
+        // coordinadorValido() tiene UUID diferente al DOCENTE_FIJO — debe fallar
         assertThrows(PermisoInsuficienteException.class, () ->
                 solicitud.atender("Observación", coordinadorValido())
         );
@@ -466,9 +383,6 @@ class SolicitudTest {
     // CERRAR
     // =========================================================================
 
-    /**
-     * RF-08 / RN-01 / RN-02 — Cerrar una solicitud ATENDIDA debe cambiar estado a CERRADA.
-     */
     @Test
     void cerrarSolicitudAtendidaDebeTransicionarACerrada() {
         Solicitud solicitud = solicitudAtendida();
@@ -479,9 +393,6 @@ class SolicitudTest {
         assertEquals(EstadoSolicitud.CERRADA, solicitud.getEstado());
     }
 
-    /**
-     * RF-08 — Cerrar debe agregar una entrada al historial.
-     */
     @Test
     void cerrarDebeAgregarEntradaAlHistorial() {
         Solicitud solicitud = solicitudAtendida();
@@ -493,9 +404,6 @@ class SolicitudTest {
         assertEquals(antes + 1, solicitud.getHistorial().size());
     }
 
-    /**
-     * RN-02 — Cerrar en estado CLASIFICADA debe lanzar TransicionInvalidaException.
-     */
     @Test
     void cerrarSolicitudClasificadaDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudClasificada();
@@ -507,9 +415,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-02 — Cerrar en estado EN_ATENCION debe lanzar TransicionInvalidaException.
-     */
     @Test
     void cerrarSolicitudEnAtencionDebeLanzarTransicionInvalidaException() {
         Solicitud solicitud = solicitudEnAtencion();
@@ -521,9 +426,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-01 — Clasificar sobre solicitud CERRADA debe lanzar SolicitudCerradaException.
-     */
     @Test
     void clasificarSolicitudCerradaDebeLanzarSolicitudCerradaException() {
         Solicitud solicitud = solicitudCerrada();
@@ -532,9 +434,6 @@ class SolicitudTest {
         );
     }
 
-    /**
-     * RN-13 — Cerrar con usuario no COORDINADOR debe lanzar PermisoInsuficienteException.
-     */
     @Test
     void cerrarConUsuarioNoCoordinadorDebeLanzarPermisoInsuficienteException() {
         Solicitud solicitud = solicitudAtendida();
@@ -550,9 +449,6 @@ class SolicitudTest {
     // INVARIANTE DE ESTADO
     // =========================================================================
 
-    /**
-     * RN-02 — El estado NO debe cambiar cuando falla una transición inválida.
-     */
     @Test
     void estadoNoDebeCambiarCuandoFallaTransicionInvalida() {
         Solicitud solicitud = solicitudClasificada();
@@ -566,9 +462,6 @@ class SolicitudTest {
         assertEquals(estadoAntes, solicitud.getEstado());
     }
 
-    /**
-     * El historial no debe crecer cuando una operación falla.
-     */
     @Test
     void historialNoDebeCrecerCuandoFallaUnaOperacion() {
         Solicitud solicitud = solicitudClasificada();
@@ -586,43 +479,34 @@ class SolicitudTest {
     // FLUJO COMPLETO
     // =========================================================================
 
-    /**
-     * Flujo completo — una solicitud puede recorrer todo el ciclo de vida
-     * desde REGISTRADA hasta CERRADA sin errores.
-     */
     @Test
     void solicitudDebePoderRecorrerCicloDeVidaCompleto() {
-        Usuario coord   = coordinadorValido();
-        Usuario docente = docenteValido();
-        Responsable r   = new Responsable(docente.getId(), docente.getNombre());
+        Usuario coord = coordinadorValido();
+        Responsable r = new Responsable(DOCENTE_FIJO.getId(), DOCENTE_FIJO.getNombre());
 
         Solicitud solicitud = solicitudValida();
         solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coord);
         solicitud.asignarPrioridad(prioridadValida(), coord);
         solicitud.asignarResponsable(r, coord);
         solicitud.iniciarAtencion(coord);
-        solicitud.atender("Proceso completado satisfactoriamente", docente);
+        solicitud.atender("Proceso completado satisfactoriamente", DOCENTE_FIJO);
         solicitud.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), coord);
 
         assertEquals(EstadoSolicitud.CERRADA, solicitud.getEstado());
         assertTrue(solicitud.getHistorial().size() > 1);
     }
 
-    /**
-     * Flujo completo — el historial debe registrar todas las acciones del ciclo de vida.
-     */
     @Test
     void cicloDeVidaCompletoDebeRegistrarTodasLasAccionesEnHistorial() {
-        Usuario coord   = coordinadorValido();
-        Usuario docente = docenteValido();
-        Responsable r   = new Responsable(docente.getId(), docente.getNombre());
+        Usuario coord = coordinadorValido();
+        Responsable r = new Responsable(DOCENTE_FIJO.getId(), DOCENTE_FIJO.getNombre());
 
-        Solicitud solicitud = solicitudValida();                                              // 1
-        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coord);                             // 2
-        solicitud.asignarPrioridad(prioridadValida(), coord);                                // 3
-        solicitud.asignarResponsable(r, coord);                                              // 4
-        solicitud.iniciarAtencion(coord);                                                    // 5
-        solicitud.atender("Proceso completado satisfactoriamente", docente);                 // 6
+        Solicitud solicitud = solicitudValida();                                                          // 1
+        solicitud.clasificar(TipoSolicitud.HOMOLOGACION, coord);                                         // 2
+        solicitud.asignarPrioridad(prioridadValida(), coord);                                            // 3
+        solicitud.asignarResponsable(r, coord);                                                          // 4
+        solicitud.iniciarAtencion(coord);                                                                // 5
+        solicitud.atender("Proceso completado satisfactoriamente", DOCENTE_FIJO);                        // 6
         solicitud.cerrar(new ObservacionCierre("Homologación aprobada por consejo de programa"), coord); // 7
 
         assertEquals(7, solicitud.getHistorial().size());
