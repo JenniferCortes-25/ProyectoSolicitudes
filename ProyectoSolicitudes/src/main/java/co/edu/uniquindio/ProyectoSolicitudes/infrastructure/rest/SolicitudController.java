@@ -2,6 +2,14 @@ package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest;
 
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.*;
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.*;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.service.AsignarResponsableService;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.service.ClasificarSolicitudService;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.service.RegistrarSolicitudService;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.*;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.Email;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.mapper.SolicitudMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,7 +18,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -19,8 +30,6 @@ import java.util.List;
  * Principio clave: este controller NO contiene lógica de negocio.
  * Solo recibe la petición HTTP, delega al servicio de dominio
  * y retorna la respuesta mapeada.
- *
- * Cuando Jennifer entregue los servicios de dominio se conectan aquí.
  */
 @RestController
 @RequestMapping("/api/solicitudes")
@@ -30,10 +39,13 @@ public class SolicitudController {
 
     private final SolicitudMapper mapper;
 
-    // ── AQUÍ SE INYECTAN LOS SERVICIOS CUANDO JENNIFER LOS ENTREGUE ──
-    // private final RegistrarSolicitudService registrarSolicitudService;
-    // private final ClasificarSolicitudService clasificarSolicitudService;
-    // private final AsignarResponsableService asignarResponsableService;
+    // Servicios de dominio — se instancian aquí hasta Hito 3 con repositorios
+    private final RegistrarSolicitudService registrarSolicitudService = new RegistrarSolicitudService();
+    private final ClasificarSolicitudService clasificarSolicitudService = new ClasificarSolicitudService();
+    private final AsignarResponsableService asignarResponsableService = new AsignarResponsableService();
+
+    // Lista en memoria temporal — se reemplaza con repositorio en Hito 3
+    private final List<Solicitud> solicitudes = new ArrayList<>();
 
     // ==================== POST /api/solicitudes ====================
 
@@ -43,8 +55,30 @@ public class SolicitudController {
     @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos")
     public ResponseEntity<SolicitudDetalleResponse> crear(
             @Valid @RequestBody CrearSolicitudRequest request) {
-        // TODO: conectar con RegistrarSolicitudService cuando Jennifer lo entregue
-        return ResponseEntity.status(201).build();
+
+        // Solicitante temporal hasta que exista repositorio de usuarios
+        Usuario solicitante = new Usuario(
+                request.solicitanteId(), "Solicitante",
+                new Email("solicitante@uniquindio.edu.co"), TipoUsuario.ESTUDIANTE
+        );
+
+        Solicitud solicitud = registrarSolicitudService.registrar(
+                new DescripcionSolicitud(request.descripcion()),
+                request.canalOrigen(),
+                solicitante
+        );
+
+        solicitudes.add(solicitud);
+
+        SolicitudDetalleResponse response = mapper.toDetalleResponse(solicitud);
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(solicitud.getId())
+                .toUri();
+
+        return ResponseEntity.created(location).body(response);
     }
 
     // ==================== GET /api/solicitudes ====================
@@ -54,8 +88,13 @@ public class SolicitudController {
     @ApiResponse(responseCode = "200", description = "Lista de solicitudes")
     public ResponseEntity<List<SolicitudResumenResponse>> listar(
             @RequestParam(required = false) String estado) {
-        // TODO: conectar con servicio de consulta
-        return ResponseEntity.ok(List.of());
+
+        List<Solicitud> resultado = estado == null ? solicitudes :
+                solicitudes.stream()
+                        .filter(s -> s.getEstado().name().equals(estado))
+                        .toList();
+
+        return ResponseEntity.ok(mapper.toResumenResponseList(resultado));
     }
 
     // ==================== GET /api/solicitudes/{id} ====================
@@ -66,8 +105,12 @@ public class SolicitudController {
     @ApiResponse(responseCode = "404", description = "Solicitud no encontrada")
     public ResponseEntity<SolicitudDetalleResponse> obtener(
             @PathVariable String id) {
-        // TODO: conectar con servicio de consulta
-        return ResponseEntity.ok().build();
+
+        return solicitudes.stream()
+                .filter(s -> s.getId().toString().equals(id))
+                .findFirst()
+                .map(s -> ResponseEntity.ok(mapper.toDetalleResponse(s)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // ==================== PUT /api/solicitudes/{id}/clasificar ====================
@@ -80,8 +123,24 @@ public class SolicitudController {
     public ResponseEntity<SolicitudDetalleResponse> clasificar(
             @PathVariable String id,
             @Valid @RequestBody ClasificarSolicitudRequest request) {
-        // TODO: conectar con ClasificarSolicitudService
-        return ResponseEntity.ok().build();
+
+        Solicitud solicitud = buscarPorId(id);
+        if (solicitud == null) return ResponseEntity.notFound().build();
+
+        // Coordinador temporal hasta repositorio
+        Usuario coordinador = new Usuario(
+                request.coordinadorId(), "Coordinador",
+                new Email("coordinador@uniquindio.edu.co"), TipoUsuario.COORDINADOR
+        );
+
+        clasificarSolicitudService.clasificar(
+                solicitud,
+                request.tipo(),
+                new Prioridad(request.nivelPrioridad(), request.justificacionPrioridad()),
+                coordinador
+        );
+
+        return ResponseEntity.ok(mapper.toDetalleResponse(solicitud));
     }
 
     // ==================== PUT /api/solicitudes/{id}/asignar ====================
@@ -93,8 +152,23 @@ public class SolicitudController {
     public ResponseEntity<SolicitudDetalleResponse> asignarResponsable(
             @PathVariable String id,
             @Valid @RequestBody AsignarResponsableRequest request) {
-        // TODO: conectar con AsignarResponsableService
-        return ResponseEntity.ok().build();
+
+        Solicitud solicitud = buscarPorId(id);
+        if (solicitud == null) return ResponseEntity.notFound().build();
+
+        Usuario coordinador = new Usuario(
+                request.coordinadorId(), "Coordinador",
+                new Email("coordinador@uniquindio.edu.co"), TipoUsuario.COORDINADOR
+        );
+
+        Usuario responsable = new Usuario(
+                request.responsableId(), "Responsable",
+                new Email("responsable@uniquindio.edu.co"), TipoUsuario.DOCENTE
+        );
+
+        asignarResponsableService.asignar(solicitud, responsable, coordinador);
+
+        return ResponseEntity.ok(mapper.toDetalleResponse(solicitud));
     }
 
     // ==================== PUT /api/solicitudes/{id}/cerrar ====================
@@ -107,8 +181,18 @@ public class SolicitudController {
     public ResponseEntity<SolicitudDetalleResponse> cerrar(
             @PathVariable String id,
             @Valid @RequestBody CerrarSolicitudRequest request) {
-        // TODO: conectar con servicio de cierre
-        return ResponseEntity.ok().build();
+
+        Solicitud solicitud = buscarPorId(id);
+        if (solicitud == null) return ResponseEntity.notFound().build();
+
+        Usuario coordinador = new Usuario(
+                request.coordinadorId(), "Coordinador",
+                new Email("coordinador@uniquindio.edu.co"), TipoUsuario.COORDINADOR
+        );
+
+        solicitud.cerrar(new ObservacionCierre(request.observacion()), coordinador);
+
+        return ResponseEntity.ok(mapper.toDetalleResponse(solicitud));
     }
 
     // ==================== GET /api/solicitudes/{id}/historial ====================
@@ -118,7 +202,19 @@ public class SolicitudController {
     @ApiResponse(responseCode = "200", description = "Historial de la solicitud")
     public ResponseEntity<List<EventoHistorialResponse>> historial(
             @PathVariable String id) {
-        // TODO: conectar con servicio de consulta
-        return ResponseEntity.ok(List.of());
+
+        Solicitud solicitud = buscarPorId(id);
+        if (solicitud == null) return ResponseEntity.notFound().build();
+
+        return ResponseEntity.ok(mapper.toEventoResponseList(solicitud.getHistorial()));
+    }
+
+    // ==================== Helper privado ====================
+
+    private Solicitud buscarPorId(String id) {
+        return solicitudes.stream()
+                .filter(s -> s.getId().toString().equals(id))
+                .findFirst()
+                .orElse(null);
     }
 }

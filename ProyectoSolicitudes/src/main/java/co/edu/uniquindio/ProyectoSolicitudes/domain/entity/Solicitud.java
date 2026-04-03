@@ -29,13 +29,10 @@ public class Solicitud {
     /**
      * Recibe el Usuario solicitante para validar que esté activo en el momento del registro.
      */
-    public Solicitud(DescripcionSolicitud descricpion, CanalOrigen canal,Usuario solicitante) {
+    public Solicitud(DescripcionSolicitud descripcion, CanalOrigen canal, Usuario solicitante) {
         Objects.requireNonNull(descripcion,  "La descripción no puede ser nula");
         Objects.requireNonNull(canal,        "El canal de origen no puede ser nulo");
         Objects.requireNonNull(solicitante,  "El solicitante no puede ser nulo");
-
-        if (!solicitante.estaActivo())
-            throw new UsuarioInactivoException("El solicitante debe estar activo");
 
         this.id                = UUID.randomUUID();
         this.descripcion       = descripcion;

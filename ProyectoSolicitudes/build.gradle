@@ -44,8 +44,7 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 
     // Swagger / Springdoc
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
-
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
     // Tests
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

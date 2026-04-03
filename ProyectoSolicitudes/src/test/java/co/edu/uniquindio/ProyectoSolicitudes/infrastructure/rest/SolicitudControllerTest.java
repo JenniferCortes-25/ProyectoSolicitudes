@@ -93,11 +93,11 @@ class SolicitudControllerTest {
     }
 
     /**
-     * GET /api/solicitudes/{id}/historial debe retornar 200.
-     */
+ * GET /api/solicitudes/{id}/historial con ID inexistente debe retornar 404.
+ */
     @Test
-    void deberiaRetornar200AlObtenerHistorial() throws Exception {
-        mockMvc.perform(get("/api/solicitudes/abc-123/historial"))
-                .andExpect(status().isOk());
-    }
+    void deberiaRetornar404CuandoSolicitudNoExiste() throws Exception {
+         mockMvc.perform(get("/api/solicitudes/abc-123/historial"))
+            .andExpect(status().isNotFound());
+}
 }

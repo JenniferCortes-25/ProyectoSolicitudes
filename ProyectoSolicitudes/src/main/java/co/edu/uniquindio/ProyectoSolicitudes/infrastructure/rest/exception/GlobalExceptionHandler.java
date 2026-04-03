@@ -81,21 +81,21 @@ public class GlobalExceptionHandler {
      * Permisos insuficientes para la operación.
      * → 403 Forbidden
      */
-    //** @ExceptionHandler(PermisoInsuficienteException.class)
-    //public ResponseEntity<Map<String, Object>> handlePermisoInsuficiente(
-      //      PermisoInsuficienteException ex) {
-        //return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), null);
-    //}
+    @ExceptionHandler(PermisoInsuficienteException.class)
+        public ResponseEntity<Map<String, Object>> handlePermisoInsuficiente(
+            PermisoInsuficienteException ex) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), null);
+    }
 
     /**
      * Usuario o solicitud no encontrados.
      * → 404 Not Found
      */
-   // @ExceptionHandler(UsuarioNoEncontradoException.class)
-   // public ResponseEntity<Map<String, Object>> handleNoEncontrado(
-     //       UsuarioNoEncontradoException ex) {
-       // return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
-    //}
+    @ExceptionHandler(UsuarioNoEncontradoException.class)
+     public ResponseEntity<Map<String, Object>> handleNoEncontrado(
+            UsuarioNoEncontradoException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
+    }
 
     /**
      * Cualquier otra excepción no controlada.
