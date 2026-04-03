@@ -29,11 +29,15 @@ public class Solicitud {
     /**
      * Recibe el Usuario solicitante para validar que esté activo en el momento del registro.
      */
-    public Solicitud(DescripcionSolicitud descripcion, CanalOrigen canal, Usuario solicitante) {
+    public Solicitud(DescripcionSolicitud descripcion, CanalOrigen canal,Usuario solicitante) {
+
         Objects.requireNonNull(descripcion,  "La descripción no puede ser nula");
         Objects.requireNonNull(canal,        "El canal de origen no puede ser nulo");
         Objects.requireNonNull(solicitante,  "El solicitante no puede ser nulo");
 
+        if (!solicitante.estaActivo())
+            throw new UsuarioInactivoException("El solicitante debe estar activo");
+        
         this.id                = UUID.randomUUID();
         this.descripcion       = descripcion;
         this.canal             = canal;
@@ -182,19 +186,21 @@ public class Solicitud {
      * Estado debe ser EN_ATENCION.
      * Solo el responsable asignado puede marcar como atendida.
      */
-    public void atender(String observacion, Usuario responsable){
+    public void atender(String observacion, Usuario responsable) {
         validarNoEstaCerrada();
 
         Objects.requireNonNull(responsable, "El usuario no puede ser nulo");
 
+        // ← primero validar el estado
+        if (this.estado != EstadoSolicitud.EN_ATENCION)
+            throw new TransicionInvalidaException(
+                    "Solo se puede atender en estado EN_ATENCION. Estado actual: " + this.estado);
+
+        // ← luego validar que sea el responsable asignado
         if (this.responsable == null
                 || !this.responsable.usuarioId().equals(responsable.getId()))
             throw new PermisoInsuficienteException(
                     "Solo el responsable asignado puede marcar la solicitud como atendida");
-
-        if (this.estado != EstadoSolicitud.EN_ATENCION)
-            throw new TransicionInvalidaException(
-                    "Solo se puede atender en estado EN_ATENCION. Estado actual: " + this.estado);
 
         this.estado = EstadoSolicitud.ATENDIDA;
 
