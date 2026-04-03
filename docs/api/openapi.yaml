@@ -1,0 +1,637 @@
+openapi: 3.1.0
+
+info:
+  title: API Sistema de Triage y Gestión de Solicitudes Académicas
+  description: |
+    API RESTful para la gestión estructurada de solicitudes académicas.
+
+    **Dominio:** Gestión de Solicitudes Académicas
+    **Agregado Principal:** Solicitud
+
+    ### Ciclo de vida de una Solicitud
+    ```
+    REGISTRADA → CLASIFICADA → EN_ATENCION → ATENDIDA → CERRADA
+    ```
+
+    ### Permisos por operación
+    | Operación           | Rol requerido                 |
+    |---------------------|-------------------------------|
+    | Registrar           | Cualquier usuario activo      |
+    | Clasificar          | COORDINADOR                   |
+    | Asignar responsable | COORDINADOR                   |
+    | Iniciar atención    | COORDINADOR o ADMINISTRATIVO  |
+    | Atender             | El responsable asignado       |
+    | Cerrar              | COORDINADOR                   |
+  version: 1.0.0
+  contact:
+    name: Programa de Ingeniería de Sistemas
+    email: sistemas@uniquindio.edu.co
+
+servers:
+  - url: http://localhost:8080
+    description: Servidor local
+
+tags:
+  - name: Solicitudes
+    description: Gestión del agregado Solicitud
+
+paths:
+
+  # ==================== /api/solicitudes ====================
+  /api/solicitudes:
+
+    post:
+      tags:
+        - Solicitudes
+      summary: Registrar una nueva solicitud
+      description: |
+        Crea una nueva solicitud en estado **REGISTRADA**.
+
+        Delega a: `RegistrarSolicitudService.registrar()`
+
+        **Precondiciones:**
+        - El solicitante debe estar activo en el sistema (RN-04)
+        - La descripción debe tener entre 10 y 1000 caracteres (RN-06)
+      operationId: registrarSolicitud
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrearSolicitudRequest'
+            example:
+              descripcion: "Solicito homologación de la asignatura Programación I cursada en otra universidad"
+              canalOrigen: CORREO_ELECTRONICO
+              solicitanteId: "E-001"
+      responses:
+        '201':
+          description: Solicitud registrada exitosamente
+          headers:
+            Location:
+              description: URI de la solicitud creada
+              schema:
+                type: string
+                example: /api/solicitudes/550e8400-e29b-41d4-a716-446655440000
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudDetalleResponse'
+        '400':
+          description: Datos inválidos (descripción muy corta, canal nulo, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Solicitante no encontrado (UsuarioNoEncontradoException)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Solicitudes
+      summary: Listar solicitudes
+      description: |
+        Obtiene la lista de solicitudes. Permite filtrar opcionalmente por estado.
+      operationId: listarSolicitudes
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          description: Filtrar por estado de la solicitud
+          schema:
+            $ref: '#/components/schemas/EstadoSolicitud'
+      responses:
+        '200':
+          description: Lista de solicitudes obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SolicitudResumenResponse'
+
+  # ==================== /api/solicitudes/{id} ====================
+  /api/solicitudes/{id}:
+
+    get:
+      tags:
+        - Solicitudes
+      summary: Obtener detalle de una solicitud
+      description: |
+        Retorna la información completa de una solicitud por su ID.
+      operationId: obtenerSolicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador UUID de la solicitud
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Detalle de la solicitud
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudDetalleResponse'
+        '404':
+          description: Solicitud no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== /api/solicitudes/{id}/clasificar ====================
+  /api/solicitudes/{id}/clasificar:
+
+    put:
+      tags:
+        - Solicitudes
+      summary: Clasificar una solicitud
+      description: |
+        Asigna tipo y prioridad a la solicitud en una sola operación.
+
+        Delega a: `ClasificarSolicitudService.clasificar()`
+        que internamente llama `Solicitud.clasificar()` seguido de `Solicitud.asignarPrioridad()`.
+
+        **Precondiciones:**
+        - La solicitud debe estar en estado `REGISTRADA` (RN-02)
+        - El coordinador debe tener rol `COORDINADOR` (RN-13)
+        - La justificación de prioridad debe tener mínimo 5 caracteres (RN-07)
+      operationId: clasificarSolicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador UUID de la solicitud
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasificarSolicitudRequest'
+            example:
+              tipoSolicitud: HOMOLOGACION
+              prioridad:
+                nivel: ALTA
+                justificacion: "Tiene fecha límite próxima de matrícula"
+              coordinadorId: "C-001"
+      responses:
+        '200':
+          description: Solicitud clasificada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudDetalleResponse'
+        '400':
+          description: Estado inválido para clasificar, o datos incorrectos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene rol COORDINADOR (PermisoInsuficienteException)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Solicitud o coordinador no encontrado (UsuarioNoEncontradoException)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== /api/solicitudes/{id}/asignar ====================
+  /api/solicitudes/{id}/asignar:
+
+    put:
+      tags:
+        - Solicitudes
+      summary: Asignar responsable a una solicitud
+      description: |
+        Asigna un usuario como responsable de atender la solicitud.
+
+        Delega a: `AsignarResponsableService.asignar()`
+        que valida que el responsable esté activo antes de llamar a `Solicitud.asignarResponsable()`.
+
+        **Precondiciones:**
+        - La solicitud no debe estar en estado `CERRADA` (RN-01)
+        - El coordinador debe tener rol `COORDINADOR` (RN-13)
+        - El responsable debe estar activo en el sistema (RN-04 / RN-10)
+      operationId: asignarResponsable
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador UUID de la solicitud
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AsignarResponsableRequest'
+            example:
+              responsableId: "D-005"
+              coordinadorId: "C-001"
+      responses:
+        '200':
+          description: Responsable asignado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudDetalleResponse'
+        '400':
+          description: Solicitud cerrada, o responsable inactivo (UsuarioInactivoException)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene rol COORDINADOR (PermisoInsuficienteException)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Solicitud, coordinador o responsable no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== /api/solicitudes/{id}/cerrar ====================
+  /api/solicitudes/{id}/cerrar:
+
+    put:
+      tags:
+        - Solicitudes
+      summary: Cerrar una solicitud
+      description: |
+        Marca la solicitud como cerrada (estado final e irreversible).
+
+        Delega a: `Solicitud.cerrar()`
+
+        **Precondiciones:**
+        - La solicitud debe estar en estado `ATENDIDA` (RN-02)
+        - El coordinador debe tener rol `COORDINADOR` (RN-13)
+        - La observación debe tener mínimo 20 caracteres (RN-08)
+      operationId: cerrarSolicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador UUID de la solicitud
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CerrarSolicitudRequest'
+            example:
+              observacion: "Homologación aprobada por consejo de programa en sesión del 28 de marzo"
+              coordinadorId: "C-001"
+      responses:
+        '200':
+          description: Solicitud cerrada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudDetalleResponse'
+        '400':
+          description: Estado inválido para cerrar, u observación con menos de 20 caracteres
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene rol COORDINADOR (PermisoInsuficienteException)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Solicitud o coordinador no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== /api/solicitudes/{id}/historial ====================
+  /api/solicitudes/{id}/historial:
+
+    get:
+      tags:
+        - Solicitudes
+      summary: Ver historial de una solicitud
+      description: |
+        Retorna todas las `EntradaHistorial` en orden cronológico.
+        El historial es inmutable desde fuera del agregado — solo lectura.
+        Cada entrada es registrada automáticamente por los métodos del dominio.
+      operationId: obtenerHistorial
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador UUID de la solicitud
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Historial de la solicitud
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoHistorialResponse'
+        '404':
+          description: Solicitud no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+# ==================== COMPONENTS ====================
+components:
+  schemas:
+
+    # ─── Request DTOs ───────────────────────────────────────────────────────
+
+    CrearSolicitudRequest:
+      type: object
+      required:
+        - descripcion
+        - canalOrigen
+        - solicitanteId
+      properties:
+        descripcion:
+          type: string
+          minLength: 10
+          maxLength: 1000
+          description: Motivo de la solicitud. Validado por DescripcionSolicitud (RN-06)
+          example: "Solicito homologación de la asignatura Programación I"
+        canalOrigen:
+          $ref: '#/components/schemas/CanalOrigen'
+        solicitanteId:
+          type: string
+          description: Identificación del usuario solicitante (debe estar activo)
+          example: "E-001"
+
+    ClasificarSolicitudRequest:
+      type: object
+      description: |
+        Clasifica la solicitud asignando tipo y prioridad en una sola operación.
+        Corresponde a ClasificarSolicitudService que llama clasificar() + asignarPrioridad().
+      required:
+        - tipoSolicitud
+        - prioridad
+        - coordinadorId
+      properties:
+        tipoSolicitud:
+          $ref: '#/components/schemas/TipoSolicitud'
+        prioridad:
+          $ref: '#/components/schemas/PrioridadDTO'
+        coordinadorId:
+          type: string
+          description: Identificación del coordinador que realiza la clasificación (RN-13)
+          example: "C-001"
+
+    AsignarResponsableRequest:
+      type: object
+      required:
+        - responsableId
+        - coordinadorId
+      properties:
+        responsableId:
+          type: string
+          description: Identificación del usuario que será responsable (debe estar activo, RN-04)
+          example: "D-005"
+        coordinadorId:
+          type: string
+          description: Identificación del coordinador que realiza la asignación (RN-13)
+          example: "C-001"
+
+    CerrarSolicitudRequest:
+      type: object
+      required:
+        - observacion
+        - coordinadorId
+      properties:
+        observacion:
+          type: string
+          minLength: 20
+          maxLength: 500
+          description: Observación obligatoria de cierre. Validada por ObservacionCierre (RN-08)
+          example: "Homologación aprobada por consejo de programa en sesión ordinaria"
+        coordinadorId:
+          type: string
+          description: Identificación del coordinador que cierra la solicitud (RN-13)
+          example: "C-001"
+
+    # ─── Response DTOs ──────────────────────────────────────────────────────
+
+    SolicitudDetalleResponse:
+      type: object
+      description: Vista completa de una solicitud. Usado en GET /{id} y en todas las operaciones de escritura.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único generado automáticamente por el dominio
+        descripcion:
+          type: string
+          description: Texto completo de la descripción
+        canalOrigen:
+          $ref: '#/components/schemas/CanalOrigen'
+        estado:
+          $ref: '#/components/schemas/EstadoSolicitud'
+        tipo:
+          $ref: '#/components/schemas/TipoSolicitud'
+          nullable: true
+          description: Null hasta que sea clasificada
+        prioridad:
+          $ref: '#/components/schemas/PrioridadDTO'
+          nullable: true
+          description: Null hasta que sea clasificada
+        solicitanteId:
+          type: string
+          description: ID del usuario que registró la solicitud
+        solicitanteNombre:
+          type: string
+          description: Nombre del solicitante capturado en el momento del registro
+        responsableNombre:
+          type: string
+          nullable: true
+          description: Nombre del responsable asignado. Null si aún no hay responsable.
+        fechaRegistro:
+          type: string
+          format: date-time
+          description: Fecha y hora de creación de la solicitud
+        totalEventosHistorial:
+          type: integer
+          description: Cantidad de entradas registradas en el historial
+
+    SolicitudResumenResponse:
+      type: object
+      description: Vista resumida para listados.
+      properties:
+        id:
+          type: string
+          format: uuid
+        descripcionBreve:
+          type: string
+          description: Primeros 100 caracteres de la descripción
+        canalOrigen:
+          $ref: '#/components/schemas/CanalOrigen'
+        estado:
+          $ref: '#/components/schemas/EstadoSolicitud'
+        tipo:
+          $ref: '#/components/schemas/TipoSolicitud'
+          nullable: true
+        nivelPrioridad:
+          $ref: '#/components/schemas/NivelPrioridad'
+          nullable: true
+        solicitanteNombre:
+          type: string
+        responsableNombre:
+          type: string
+          nullable: true
+        fechaRegistro:
+          type: string
+          format: date-time
+
+    EventoHistorialResponse:
+      type: object
+      description: |
+        Representa una EntradaHistorial del dominio (record inmutable).
+        Campos mapeados directamente desde EntradaHistorial.
+      properties:
+        fechaHora:
+          type: string
+          format: date-time
+          description: Momento exacto en que ocurrió la acción
+        accion:
+          type: string
+          description: Descripción de lo que ocurrió (ej. "Solicitud clasificada como HOMOLOGACION")
+        usuarioResponsable:
+          type: string
+          description: Nombre del usuario que realizó la acción
+        observaciones:
+          type: string
+          description: Notas adicionales. Puede estar vacío.
+
+    # ─── Value Objects como DTOs ────────────────────────────────────────────
+
+    PrioridadDTO:
+      type: object
+      description: Representa el Value Object Prioridad del dominio.
+      required:
+        - nivel
+        - justificacion
+      properties:
+        nivel:
+          $ref: '#/components/schemas/NivelPrioridad'
+        justificacion:
+          type: string
+          minLength: 5
+          description: Justificación obligatoria. Validada por Prioridad (RN-07)
+          example: "Tiene fecha límite próxima de matrícula"
+
+    # ─── Enumeraciones ──────────────────────────────────────────────────────
+
+    EstadoSolicitud:
+      type: string
+      description: |
+        Ciclo de vida de la solicitud (RN-02).
+        Transiciones válidas: REGISTRADA → CLASIFICADA → EN_ATENCION → ATENDIDA → CERRADA
+      enum:
+        - REGISTRADA
+        - CLASIFICADA
+        - EN_ATENCION
+        - ATENDIDA
+        - CERRADA
+
+    TipoSolicitud:
+      type: string
+      description: Categoría de la solicitud académica. Se asigna durante la clasificación (RF-02).
+      enum:
+        - HOMOLOGACION
+        - REGISTRO_ASIGNATURA
+        - CANCELACION_ASIGNATURA
+        - SOLICITUD_CUPO
+        - CONSULTA_ACADEMICA
+        - OTRO
+
+    CanalOrigen:
+      type: string
+      description: Canal por el cual fue recibida la solicitud (RF-01).
+      enum:
+        - PRESENCIAL
+        - CORREO_ELECTRONICO
+        - SAC
+        - TELEFONICO
+        - CSU
+
+    NivelPrioridad:
+      type: string
+      description: Nivel de urgencia de la solicitud (RN-07).
+      enum:
+        - CRITICA
+        - ALTA
+        - MEDIA
+        - BAJA
+
+    TipoUsuario:
+      type: string
+      description: Rol del usuario en el sistema. Determina qué operaciones puede realizar (RN-13).
+      enum:
+        - ESTUDIANTE
+        - DOCENTE
+        - COORDINADOR
+        - ADMINISTRATIVO
+
+    # ─── Error Response ─────────────────────────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      description: |
+        Estructura estándar de error devuelta por GlobalExceptionHandler.
+
+        Mapeo de excepciones del dominio a códigos HTTP:
+        - 400 → SolicitudCerradaException, TransicionInvalidaException, ObservacionInvalidaException, UsuarioInactivoException
+        - 403 → PermisoInsuficienteException
+        - 404 → UsuarioNoEncontradoException
+        - 500 → Exception genérica
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Momento en que ocurrió el error
+        status:
+          type: integer
+          description: Código HTTP
+          example: 403
+        error:
+          type: string
+          description: Descripción estándar del código HTTP
+          example: "Forbidden"
+        message:
+          type: string
+          description: Mensaje del dominio
+          example: "Solo un coordinador puede clasificar una solicitud"
