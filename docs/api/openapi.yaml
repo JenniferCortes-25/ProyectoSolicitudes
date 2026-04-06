@@ -14,14 +14,14 @@ info:
     ```
 
     ### Permisos por operación
-    | Operación           | Rol requerido                 |
-    |---------------------|-------------------------------|
-    | Registrar           | Cualquier usuario activo      |
-    | Clasificar          | COORDINADOR                   |
-    | Asignar responsable | COORDINADOR                   |
-    | Iniciar atención    | COORDINADOR o ADMINISTRATIVO  |
-    | Atender             | El responsable asignado       |
-    | Cerrar              | COORDINADOR                   |
+    | Operación           | Rol requerido                |
+    |---------------------|------------------------------|
+    | Registrar           | Cualquier usuario activo     |
+    | Clasificar          | COORDINADOR                  |
+    | Asignar responsable | COORDINADOR                  |
+    | Iniciar atención    | COORDINADOR o ADMINISTRATIVO |
+    | Atender             | El responsable asignado      |
+    | Cerrar              | COORDINADOR                  |
   version: 1.0.0
   contact:
     name: Programa de Ingeniería de Sistemas
@@ -77,11 +77,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/SolicitudDetalleResponse'
         '400':
-          description: Datos inválidos (descripción muy corta, canal nulo, etc.)
+          description: Datos inválidos — descripción muy corta, canal nulo, solicitante en blanco
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: "2025-04-05T10:00:00"
+                status: 400
+                error: "Bad Request"
+                message: "Datos de entrada inválidos"
+                errors:
+                  descripcion: "La descripción debe tener entre 10 y 1000 caracteres"
         '404':
           description: Solicitante no encontrado (UsuarioNoEncontradoException)
           content:
@@ -95,6 +102,7 @@ paths:
       summary: Listar solicitudes
       description: |
         Obtiene la lista de solicitudes. Permite filtrar opcionalmente por estado.
+        Actualmente usa almacenamiento en memoria — se reemplazará con repositorio en Hito 3.
       operationId: listarSolicitudes
       parameters:
         - name: estado
@@ -102,7 +110,13 @@ paths:
           required: false
           description: Filtrar por estado de la solicitud
           schema:
-            $ref: '#/components/schemas/EstadoSolicitud'
+            type: string
+            enum:
+              - REGISTRADA
+              - CLASIFICADA
+              - EN_ATENCION
+              - ATENDIDA
+              - CERRADA
       responses:
         '200':
           description: Lista de solicitudes obtenida exitosamente
@@ -157,7 +171,7 @@ paths:
         Asigna tipo y prioridad a la solicitud en una sola operación.
 
         Delega a: `ClasificarSolicitudService.clasificar()`
-        que internamente llama `Solicitud.clasificar()` seguido de `Solicitud.asignarPrioridad()`.
+        que internamente llama `Solicitud.clasificar()` + `Solicitud.asignarPrioridad()`.
 
         **Precondiciones:**
         - La solicitud debe estar en estado `REGISTRADA` (RN-02)
@@ -179,10 +193,9 @@ paths:
             schema:
               $ref: '#/components/schemas/ClasificarSolicitudRequest'
             example:
-              tipoSolicitud: HOMOLOGACION
-              prioridad:
-                nivel: ALTA
-                justificacion: "Tiene fecha límite próxima de matrícula"
+              tipo: HOMOLOGACION
+              nivelPrioridad: ALTA
+              justificacionPrioridad: "Tiene fecha límite próxima de matrícula"
               coordinadorId: "C-001"
       responses:
         '200':
@@ -192,7 +205,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SolicitudDetalleResponse'
         '400':
-          description: Estado inválido para clasificar, o datos incorrectos
+          description: Estado inválido para clasificar, o datos de entrada incorrectos
           content:
             application/json:
               schema:
@@ -204,7 +217,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Solicitud o coordinador no encontrado (UsuarioNoEncontradoException)
+          description: Solicitud no encontrada
           content:
             application/json:
               schema:
@@ -340,8 +353,8 @@ paths:
       summary: Ver historial de una solicitud
       description: |
         Retorna todas las `EntradaHistorial` en orden cronológico.
-        El historial es inmutable desde fuera del agregado — solo lectura.
-        Cada entrada es registrada automáticamente por los métodos del dominio.
+        El historial es de solo lectura — nadie puede modificarlo desde fuera del agregado.
+        Cada entrada se registra automáticamente por los métodos del dominio de `Solicitud`.
       operationId: obtenerHistorial
       parameters:
         - name: id
@@ -372,9 +385,13 @@ components:
   schemas:
 
     # ─── Request DTOs ───────────────────────────────────────────────────────
+    # Fuente: application/dto/request/
 
     CrearSolicitudRequest:
       type: object
+      description: |
+        DTO para registrar una nueva solicitud.
+        Clase Java: `CrearSolicitudRequest` (record)
       required:
         - descripcion
         - canalOrigen
@@ -384,51 +401,67 @@ components:
           type: string
           minLength: 10
           maxLength: 1000
-          description: Motivo de la solicitud. Validado por DescripcionSolicitud (RN-06)
+          description: Motivo de la solicitud. Validado por @Size y por DescripcionSolicitud (RN-06)
           example: "Solicito homologación de la asignatura Programación I"
         canalOrigen:
           $ref: '#/components/schemas/CanalOrigen'
         solicitanteId:
           type: string
-          description: Identificación del usuario solicitante (debe estar activo)
+          description: Identificación del usuario solicitante (@NotBlank)
           example: "E-001"
 
     ClasificarSolicitudRequest:
       type: object
       description: |
-        Clasifica la solicitud asignando tipo y prioridad en una sola operación.
-        Corresponde a ClasificarSolicitudService que llama clasificar() + asignarPrioridad().
+        DTO para clasificar una solicitud existente.
+        Clase Java: `ClasificarSolicitudRequest` (record)
+
+        Los campos tipo, nivelPrioridad y justificacionPrioridad son planos —
+        no se usa un objeto PrioridadDTO anidado en el request.
+        El servicio construye internamente el Value Object Prioridad.
       required:
-        - tipoSolicitud
-        - prioridad
+        - tipo
+        - nivelPrioridad
+        - justificacionPrioridad
         - coordinadorId
       properties:
-        tipoSolicitud:
+        tipo:
           $ref: '#/components/schemas/TipoSolicitud'
-        prioridad:
-          $ref: '#/components/schemas/PrioridadDTO'
+        nivelPrioridad:
+          $ref: '#/components/schemas/NivelPrioridad'
+        justificacionPrioridad:
+          type: string
+          minLength: 5
+          description: Justificación obligatoria de la prioridad. Validada por @Size (RN-07)
+          example: "Tiene fecha límite próxima de matrícula"
         coordinadorId:
           type: string
-          description: Identificación del coordinador que realiza la clasificación (RN-13)
+          description: Identificación del coordinador que realiza la clasificación (@NotBlank, RN-13)
           example: "C-001"
 
     AsignarResponsableRequest:
       type: object
+      description: |
+        DTO para asignar un responsable a una solicitud.
+        Clase Java: `AsignarResponsableRequest` (record)
       required:
         - responsableId
         - coordinadorId
       properties:
         responsableId:
           type: string
-          description: Identificación del usuario que será responsable (debe estar activo, RN-04)
+          description: Identificación del usuario que será responsable (@NotBlank, RN-04)
           example: "D-005"
         coordinadorId:
           type: string
-          description: Identificación del coordinador que realiza la asignación (RN-13)
+          description: Identificación del coordinador que realiza la asignación (@NotBlank, RN-13)
           example: "C-001"
 
     CerrarSolicitudRequest:
       type: object
+      description: |
+        DTO para cerrar una solicitud.
+        Clase Java: `CerrarSolicitudRequest` (record)
       required:
         - observacion
         - coordinadorId
@@ -436,27 +469,33 @@ components:
         observacion:
           type: string
           minLength: 20
-          maxLength: 500
-          description: Observación obligatoria de cierre. Validada por ObservacionCierre (RN-08)
+          description: Observación obligatoria de cierre. Validada por @Size y ObservacionCierre (RN-08)
           example: "Homologación aprobada por consejo de programa en sesión ordinaria"
         coordinadorId:
           type: string
-          description: Identificación del coordinador que cierra la solicitud (RN-13)
+          description: Identificación del coordinador que cierra la solicitud (@NotBlank, RN-13)
           example: "C-001"
 
     # ─── Response DTOs ──────────────────────────────────────────────────────
+    # Fuente: application/dto/response/
 
     SolicitudDetalleResponse:
       type: object
-      description: Vista completa de una solicitud. Usado en GET /{id} y en todas las operaciones de escritura.
+      description: |
+        Vista completa de una solicitud.
+        Clase Java: `SolicitudDetalleResponse` (record)
+        Usado en GET /{id} y como respuesta de todas las operaciones de escritura.
+
+        nivelPrioridad y justificacionPrioridad son null hasta que la solicitud sea clasificada.
+        responsableId y responsableNombre son null hasta que se asigne un responsable.
       properties:
         id:
           type: string
           format: uuid
-          description: Identificador único generado automáticamente por el dominio
+          description: Identificador único generado por UUID.randomUUID()
         descripcion:
           type: string
-          description: Texto completo de la descripción
+          description: Texto completo de la descripción (extraído de DescripcionSolicitud.texto())
         canalOrigen:
           $ref: '#/components/schemas/CanalOrigen'
         estado:
@@ -465,53 +504,70 @@ components:
           $ref: '#/components/schemas/TipoSolicitud'
           nullable: true
           description: Null hasta que sea clasificada
-        prioridad:
-          $ref: '#/components/schemas/PrioridadDTO'
+        nivelPrioridad:
+          type: string
           nullable: true
-          description: Null hasta que sea clasificada
+          description: Nombre del nivel de prioridad (Prioridad.nivel().name()). Null hasta clasificar.
+          example: "ALTA"
+        justificacionPrioridad:
+          type: string
+          nullable: true
+          description: Justificación de la prioridad (Prioridad.justificacion()). Null hasta clasificar.
+          example: "Tiene fecha límite próxima de matrícula"
         solicitanteId:
           type: string
-          description: ID del usuario que registró la solicitud
+          description: UUID del solicitante en formato String
         solicitanteNombre:
           type: string
-          description: Nombre del solicitante capturado en el momento del registro
+          nullable: true
+          description: Nombre del solicitante. Actualmente ignorado en el mapper (pendiente Hito 3)
+        responsableId:
+          type: string
+          nullable: true
+          description: UUID del responsable en formato String. Null si no hay responsable.
         responsableNombre:
           type: string
           nullable: true
-          description: Nombre del responsable asignado. Null si aún no hay responsable.
+          description: Nombre del responsable asignado. Null si no hay responsable.
         fechaRegistro:
           type: string
           format: date-time
           description: Fecha y hora de creación de la solicitud
-        totalEventosHistorial:
+        totalEntradaHistorial:
           type: integer
-          description: Cantidad de entradas registradas en el historial
+          description: Cantidad de entradas en el historial (solicitud.getHistorial().size())
 
     SolicitudResumenResponse:
       type: object
-      description: Vista resumida para listados.
+      description: |
+        Vista resumida de una solicitud para listados.
+        Clase Java: `SolicitudResumenResponse` (record)
+        Usado en GET /api/solicitudes
+
+        descripcionBreve muestra los primeros 80 caracteres de la descripción.
+        solicitanteNombre actualmente ignorado en el mapper (pendiente Hito 3).
       properties:
         id:
           type: string
           format: uuid
         descripcionBreve:
           type: string
-          description: Primeros 100 caracteres de la descripción
-        canalOrigen:
-          $ref: '#/components/schemas/CanalOrigen'
+          description: Primeros 80 caracteres de la descripción
         estado:
           $ref: '#/components/schemas/EstadoSolicitud'
-        tipo:
-          $ref: '#/components/schemas/TipoSolicitud'
-          nullable: true
         nivelPrioridad:
-          $ref: '#/components/schemas/NivelPrioridad'
+          type: string
           nullable: true
+          description: Nombre del nivel de prioridad. Null hasta clasificar.
+          example: "ALTA"
         solicitanteNombre:
           type: string
+          nullable: true
+          description: Nombre del solicitante. Actualmente ignorado en el mapper.
         responsableNombre:
           type: string
           nullable: true
+          description: Nombre del responsable. Null si no hay responsable asignado.
         fechaRegistro:
           type: string
           format: date-time
@@ -519,39 +575,24 @@ components:
     EventoHistorialResponse:
       type: object
       description: |
-        Representa una EntradaHistorial del dominio (record inmutable).
-        Campos mapeados directamente desde EntradaHistorial.
+        Representa una EntradaHistorial del dominio.
+        Clase Java: `EventoHistorialResponse` (record)
+        Campos mapeados directamente desde EntradaHistorial (record inmutable).
       properties:
         fechaHora:
           type: string
           format: date-time
-          description: Momento exacto en que ocurrió la acción
+          description: Momento exacto en que ocurrió la acción (EntradaHistorial.fechaHora())
         accion:
           type: string
-          description: Descripción de lo que ocurrió (ej. "Solicitud clasificada como HOMOLOGACION")
+          description: Descripción de la acción (EntradaHistorial.accion())
+          example: "Solicitud clasificada como: HOMOLOGACION"
         usuarioResponsable:
           type: string
-          description: Nombre del usuario que realizó la acción
+          description: Nombre del usuario que realizó la acción (EntradaHistorial.usuarioResponsable())
         observaciones:
           type: string
-          description: Notas adicionales. Puede estar vacío.
-
-    # ─── Value Objects como DTOs ────────────────────────────────────────────
-
-    PrioridadDTO:
-      type: object
-      description: Representa el Value Object Prioridad del dominio.
-      required:
-        - nivel
-        - justificacion
-      properties:
-        nivel:
-          $ref: '#/components/schemas/NivelPrioridad'
-        justificacion:
-          type: string
-          minLength: 5
-          description: Justificación obligatoria. Validada por Prioridad (RN-07)
-          example: "Tiene fecha límite próxima de matrícula"
+          description: Notas adicionales (EntradaHistorial.observaciones()). Puede estar vacío.
 
     # ─── Enumeraciones ──────────────────────────────────────────────────────
 
@@ -559,6 +600,7 @@ components:
       type: string
       description: |
         Ciclo de vida de la solicitud (RN-02).
+        Clase Java: `EstadoSolicitud` (enum con esTransicionValida())
         Transiciones válidas: REGISTRADA → CLASIFICADA → EN_ATENCION → ATENDIDA → CERRADA
       enum:
         - REGISTRADA
@@ -569,7 +611,10 @@ components:
 
     TipoSolicitud:
       type: string
-      description: Categoría de la solicitud académica. Se asigna durante la clasificación (RF-02).
+      description: |
+        Categoría de la solicitud académica.
+        Clase Java: `TipoSolicitud` (enum)
+        Se asigna durante la clasificación (RF-02).
       enum:
         - HOMOLOGACION
         - REGISTRO_ASIGNATURA
@@ -580,7 +625,9 @@ components:
 
     CanalOrigen:
       type: string
-      description: Canal por el cual fue recibida la solicitud (RF-01).
+      description: |
+        Canal por el cual fue recibida la solicitud (RF-01).
+        Clase Java: `CanalOrigen` (enum)
       enum:
         - PRESENCIAL
         - CORREO_ELECTRONICO
@@ -590,7 +637,9 @@ components:
 
     NivelPrioridad:
       type: string
-      description: Nivel de urgencia de la solicitud (RN-07).
+      description: |
+        Nivel de urgencia de la solicitud (RN-07).
+        Clase Java: `NivelPrioridad` (enum), parte del Value Object Prioridad.
       enum:
         - CRITICA
         - ALTA
@@ -599,7 +648,10 @@ components:
 
     TipoUsuario:
       type: string
-      description: Rol del usuario en el sistema. Determina qué operaciones puede realizar (RN-13).
+      description: |
+        Rol del usuario en el sistema.
+        Clase Java: `TipoUsuario` (enum)
+        Determina qué operaciones puede realizar (RN-13).
       enum:
         - ESTUDIANTE
         - DOCENTE
@@ -614,10 +666,14 @@ components:
         Estructura estándar de error devuelta por GlobalExceptionHandler.
 
         Mapeo de excepciones del dominio a códigos HTTP:
-        - 400 → SolicitudCerradaException, TransicionInvalidaException, ObservacionInvalidaException, UsuarioInactivoException
+        - 400 → SolicitudCerradaException, TransicionInvalidaException,
+                ObservacionInvalidaException, UsuarioInactivoException,
+                SinResponsableException, MethodArgumentNotValidException
         - 403 → PermisoInsuficienteException
         - 404 → UsuarioNoEncontradoException
         - 500 → Exception genérica
+
+        El campo `errors` solo aparece en errores de validación (@Valid).
       properties:
         timestamp:
           type: string
@@ -633,5 +689,14 @@ components:
           example: "Forbidden"
         message:
           type: string
-          description: Mensaje del dominio
+          description: Mensaje del dominio o de validación
           example: "Solo un coordinador puede clasificar una solicitud"
+        errors:
+          type: object
+          nullable: true
+          description: Mapa campo→mensaje solo presente en errores de validación Bean Validation
+          additionalProperties:
+            type: string
+          example:
+            descripcion: "La descripción debe tener entre 10 y 1000 caracteres"
+            canalOrigen: "El canal de origen es obligatorio"
