@@ -1,12 +1,10 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest;
 
-import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.SolicitudController;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.mapper.SolicitudMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -14,8 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Tests del SolicitudController usando @WebMvcTest.
- * No levanta toda la aplicación — solo el controller y sus dependencias.
- * Mockito simula el mapper y los servicios para aislar el controller.
+ *
+ * ✔ Solo carga la capa REST (controller)
+ * ✔ Usa Mockito para simular dependencias
+ * ✔ Valida respuestas HTTP
+ *
+ * Se usa String en contentType/accept para evitar warnings de null-safety
+ * en Spring Boot 3.5+
  */
 @WebMvcTest(SolicitudController.class)
 class SolicitudControllerTest {
@@ -23,13 +26,21 @@ class SolicitudControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    /**
+     * Mock del mapper para aislar el controller.
+     */
+    @MockitoBean
     private SolicitudMapper mapper;
 
-    // ── VALUE OBJECTS ──
+    private static final String JSON = "application/json";
+
+    // ─────────────────────────────────────────────
+    // ───────────── VALUE OBJECTS ────────────────
+    // ─────────────────────────────────────────────
 
     /**
-     * Descripción menor a 10 chars debe retornar 400.
+     * Caso: Descripción muy corta.
+     * Resultado esperado: 400 Bad Request.
      */
     @Test
     void deberiaRetornar400CuandoDescripcionMuyCorta() throws Exception {
@@ -42,13 +53,15 @@ class SolicitudControllerTest {
                 """;
 
         mockMvc.perform(post("/api/solicitudes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json))
+                        .contentType(JSON)
+                        .accept(JSON)
+                        .content(json))
                 .andExpect(status().isBadRequest());
     }
 
     /**
-     * Descripción nula debe retornar 400.
+     * Caso: Descripción nula.
+     * Resultado esperado: 400 Bad Request.
      */
     @Test
     void deberiaRetornar400CuandoDescripcionNula() throws Exception {
@@ -60,13 +73,15 @@ class SolicitudControllerTest {
                 """;
 
         mockMvc.perform(post("/api/solicitudes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json))
+                        .contentType(JSON)
+                        .accept(JSON)
+                        .content(json))
                 .andExpect(status().isBadRequest());
     }
 
     /**
-     * Canal nulo debe retornar 400.
+     * Caso: Canal de origen nulo.
+     * Resultado esperado: 400 Bad Request.
      */
     @Test
     void deberiaRetornar400CuandoCanalNulo() throws Exception {
@@ -78,26 +93,35 @@ class SolicitudControllerTest {
                 """;
 
         mockMvc.perform(post("/api/solicitudes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json))
+                        .contentType(JSON)
+                        .accept(JSON)
+                        .content(json))
                 .andExpect(status().isBadRequest());
     }
 
+    // ─────────────────────────────────────────────
+    // ───────────── ENDPOINTS GET ────────────────
+    // ─────────────────────────────────────────────
+
     /**
-     * GET /api/solicitudes debe retornar 200.
+     * Caso: Listar solicitudes.
+     * Resultado esperado: 200 OK.
      */
     @Test
     void deberiaRetornar200AlListar() throws Exception {
-        mockMvc.perform(get("/api/solicitudes"))
+        mockMvc.perform(get("/api/solicitudes")
+                        .accept(JSON))
                 .andExpect(status().isOk());
     }
 
     /**
- * GET /api/solicitudes/{id}/historial con ID inexistente debe retornar 404.
- */
+     * Caso: Solicitud inexistente.
+     * Resultado esperado: 404 Not Found.
+     */
     @Test
     void deberiaRetornar404CuandoSolicitudNoExiste() throws Exception {
-         mockMvc.perform(get("/api/solicitudes/abc-123/historial"))
-            .andExpect(status().isNotFound());
-}
+        mockMvc.perform(get("/api/solicitudes/abc-123/historial")
+                        .accept(JSON))
+                .andExpect(status().isNotFound());
+    }
 }
