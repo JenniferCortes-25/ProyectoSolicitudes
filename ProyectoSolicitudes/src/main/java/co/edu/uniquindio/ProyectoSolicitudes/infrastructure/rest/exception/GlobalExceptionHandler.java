@@ -107,6 +107,16 @@ public class GlobalExceptionHandler {
                 "Error interno del servidor", null);
     }
 
+    /**
+     * ID con formato de UUID inválido en el path.
+     * → 404 Not Found para mantener consistencia con "recurso no encontrado"
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(
+            IllegalArgumentException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
+    }
+
     private ResponseEntity<Map<String, Object>> buildErrorResponse(
             HttpStatus status, String mensaje, Map<String, String> errores) {
 
