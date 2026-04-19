@@ -1,0 +1,2 @@
+-- inicializacion
+SELECT 1;
