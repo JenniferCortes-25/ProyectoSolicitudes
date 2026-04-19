@@ -8,15 +8,13 @@ import co.edu.uniquindio.ProyectoSolicitudes.domain.repository.UsuarioRepository
 import co.edu.uniquindio.ProyectoSolicitudes.domain.service.AsignarResponsableService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 /**
  * Caso de uso: Asignar responsable a una solicitud.
- *
- * 1. Obtiene solicitud, responsable y coordinador del repositorio
- * 2. Delega la asignación al servicio de dominio
- * 3. Persiste los cambios
+ * El @Transactional asegura revertir cambios si algo falla.
  */
 @Service
 @RequiredArgsConstructor
@@ -26,28 +24,28 @@ public class AsignarResponsableUseCase {
     private final UsuarioRepository usuarioRepository;
     private final AsignarResponsableService asignarResponsableService;
 
+    @Transactional
     public Solicitud ejecutar(UUID solicitudId,
                               String responsableIdentificacion,
                               String coordinadorIdentificacion) {
 
         Solicitud solicitud = solicitudRepository
-                .obtenerPorId(solicitudId)
+                .findById(solicitudId)
                 .orElseThrow(() -> new UsuarioNoEncontradoException(
                         "No existe solicitud con ID: " + solicitudId));
 
         Usuario responsable = usuarioRepository
-                .obtenerPorIdentificacion(responsableIdentificacion)
+                .findByIdentificacion(responsableIdentificacion)
                 .orElseThrow(() -> new UsuarioNoEncontradoException(
                         "No existe responsable con identificación: " + responsableIdentificacion));
 
         Usuario coordinador = usuarioRepository
-                .obtenerPorIdentificacion(coordinadorIdentificacion)
+                .findByIdentificacion(coordinadorIdentificacion)
                 .orElseThrow(() -> new UsuarioNoEncontradoException(
                         "No existe coordinador con identificación: " + coordinadorIdentificacion));
 
         asignarResponsableService.asignar(solicitud, responsable, coordinador);
 
-        solicitudRepository.guardar(solicitud);
-        return solicitud;
+        return solicitudRepository.save(solicitud);
     }
 }

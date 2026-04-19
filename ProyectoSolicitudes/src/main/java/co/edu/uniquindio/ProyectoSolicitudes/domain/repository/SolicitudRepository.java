@@ -9,12 +9,16 @@ import java.util.UUID;
 
 /**
  * Contrato de persistencia para Solicitud.
- * La implementación concreta vive en infrastructure/repository/.
+ * Adaptado a convenciones Spring Data
+ * Nombres: save, findById, findAll, findByEstado.
  */
 public interface SolicitudRepository {
-    
-    void guardar(Solicitud solicitud);
-    Optional<Solicitud> obtenerPorId(UUID id);
-    List<Solicitud> obtenerTodas();
-    List<Solicitud> obtenerPorEstado(EstadoSolicitud estado);
+
+    Solicitud save(Solicitud solicitud);
+
+    Optional<Solicitud> findById(UUID id);
+
+    List<Solicitud> findAll();
+
+    List<Solicitud> findByEstado(EstadoSolicitud estado);
 }

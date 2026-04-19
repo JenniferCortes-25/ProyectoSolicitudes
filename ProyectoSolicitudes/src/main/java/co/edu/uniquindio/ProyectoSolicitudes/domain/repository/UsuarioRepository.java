@@ -7,10 +7,13 @@ import java.util.UUID;
 
 /**
  * Contrato de persistencia para Usuario.
+ * Adaptado a convenciones Spring Data.
  */
 public interface UsuarioRepository {
 
-    void guardar(Usuario usuario);
-    Optional<Usuario> obtenerPorId(UUID id);
-    Optional<Usuario> obtenerPorIdentificacion(String identificacion);
+    Usuario save(Usuario usuario);
+
+    Optional<Usuario> findById(UUID id);
+
+    Optional<Usuario> findByIdentificacion(String identificacion);
 }

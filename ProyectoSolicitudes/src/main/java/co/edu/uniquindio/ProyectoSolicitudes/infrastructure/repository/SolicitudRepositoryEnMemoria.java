@@ -9,6 +9,7 @@ import java.util.*;
 
 /**
  * Implementación en memoria del repositorio de solicitudes.
+ * Nombres de métodos en convenciones Spring Data.
  */
 @Repository
 public class SolicitudRepositoryEnMemoria implements SolicitudRepository {
@@ -16,22 +17,23 @@ public class SolicitudRepositoryEnMemoria implements SolicitudRepository {
     private final Map<UUID, Solicitud> solicitudes = new HashMap<>();
 
     @Override
-    public void guardar(Solicitud solicitud) {
+    public Solicitud save(Solicitud solicitud) {
         solicitudes.put(solicitud.getId(), solicitud);
+        return solicitud;
     }
 
     @Override
-    public Optional<Solicitud> obtenerPorId(UUID id) {
+    public Optional<Solicitud> findById(UUID id) {
         return Optional.ofNullable(solicitudes.get(id));
     }
 
     @Override
-    public List<Solicitud> obtenerTodas() {
+    public List<Solicitud> findAll() {
         return List.copyOf(solicitudes.values());
     }
 
     @Override
-    public List<Solicitud> obtenerPorEstado(EstadoSolicitud estado) {
+    public List<Solicitud> findByEstado(EstadoSolicitud estado) {
         return solicitudes.values().stream()
                 .filter(s -> s.getEstado() == estado)
                 .toList();

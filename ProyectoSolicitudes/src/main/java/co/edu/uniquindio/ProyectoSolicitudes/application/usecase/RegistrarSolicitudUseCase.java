@@ -10,13 +10,11 @@ import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.CanalO
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.DescripcionSolicitud;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Caso de uso: Registrar una nueva solicitud.
- *
- * 1. Obtiene el solicitante del repositorio
- * 2. Delega la creación al servicio de dominio
- * 3. Persiste la solicitud
+ * El @Transactional asegura revertir cambios si algo falla.
  */
 @Service
 @RequiredArgsConstructor
@@ -26,12 +24,13 @@ public class RegistrarSolicitudUseCase {
     private final UsuarioRepository usuarioRepository;
     private final RegistrarSolicitudService registrarSolicitudService;
 
+    @Transactional
     public Solicitud ejecutar(String descripcionTexto,
                               CanalOrigen canal,
                               String solicitanteIdentificacion) {
 
         Usuario solicitante = usuarioRepository
-                .obtenerPorIdentificacion(solicitanteIdentificacion)
+                .findByIdentificacion(solicitanteIdentificacion)
                 .orElseThrow(() -> new UsuarioNoEncontradoException(
                         "No existe solicitante con identificación: " + solicitanteIdentificacion));
 
@@ -41,7 +40,6 @@ public class RegistrarSolicitudUseCase {
                 solicitante
         );
 
-        solicitudRepository.guardar(solicitud);
-        return solicitud;
+        return solicitudRepository.save(solicitud);
     }
 }
