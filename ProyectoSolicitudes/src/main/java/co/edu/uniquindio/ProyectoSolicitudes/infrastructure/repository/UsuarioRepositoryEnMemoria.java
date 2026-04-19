@@ -4,7 +4,6 @@ import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.repository.UsuarioRepository;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.Email;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
-import org.springframework.stereotype.Repository;
 
 import java.util.*;
 
@@ -12,7 +11,7 @@ import java.util.*;
  * Implementación en memoria del repositorio de usuarios.
  * Nombres de métodos en convenciones Spring Data.
  */
-@Repository
+// @Repository — desactivado; reemplazado por UsuarioJpaRepository (Guía 10)
 public class UsuarioRepositoryEnMemoria implements UsuarioRepository {
 
     private final Map<UUID, Usuario> usuarios = new HashMap<>();
@@ -44,5 +43,20 @@ public class UsuarioRepositoryEnMemoria implements UsuarioRepository {
         return usuarios.values().stream()
                 .filter(u -> u.getIdentificacion().equals(identificacion))
                 .findFirst();
+    }
+
+    @Override
+    public java.util.List<Usuario> findAll() {
+        return java.util.List.copyOf(usuarios.values());
+    }
+
+    @Override
+    public void deleteById(UUID id) {
+        usuarios.remove(id);
+    }
+
+    @Override
+    public boolean existsById(UUID id) {
+        return usuarios.containsKey(id);
     }
 }

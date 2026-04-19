@@ -78,4 +78,31 @@ public class Usuario {
     public Email getEmail()              { return email; }
     public TipoUsuario getTipoUsuario()  { return tipoUsuario; }
     public EstadoUsuario getEstadoUsuario() { return estadoUsuario; }
+
+    // ─── Factory method de reconstrucción ─────────────────────────────────────
+
+    /**
+     * Reconstruye un Usuario desde la BD sin pasar por validaciones de creación.
+     * Solo debe usarse desde el mapper de persistencia.
+     */
+    public static Usuario reconstruirDesdeDB(
+            UUID id,
+            String identificacion,
+            String nombre,
+            Email email,
+            TipoUsuario tipoUsuario,
+            EstadoUsuario estadoUsuario) {
+
+        Usuario u = new Usuario();
+        u.id             = id;
+        u.identificacion = identificacion;
+        u.nombre         = nombre;
+        u.email          = email;
+        u.tipoUsuario    = tipoUsuario;
+        u.estadoUsuario  = estadoUsuario;
+        return u;
+    }
+
+    /** Constructor vacío privado — solo para uso del factory method reconstruirDesdeDB. */
+    private Usuario() {}
 }

@@ -290,4 +290,42 @@ public class Solicitud {
         return Collections.unmodifiableList(historial);
     }
 
+    // ─── Factory method de reconstrucción (solo para la capa de persistencia) ─
+
+    /**
+     * Reconstruye una Solicitud desde la base de datos sin pasar por las
+     * validaciones de creación. Solo debe usarse desde el mapper de persistencia.
+     * El historial se restaura tal como estaba en la BD.
+     */
+    public static Solicitud reconstruirDesdeDB(
+            UUID id,
+            DescripcionSolicitud descripcion,
+            TipoSolicitud tipo,
+            Prioridad prioridad,
+            EstadoSolicitud estado,
+            CanalOrigen canal,
+            UUID solicitanteId,
+            String solicitanteNombre,
+            Responsable responsable,
+            List<EntradaHistorial> historial,
+            LocalDateTime fechaRegistro) {
+
+        Solicitud s = new Solicitud();
+        s.id                = id;
+        s.descripcion       = descripcion;
+        s.tipo              = tipo;
+        s.prioridad         = prioridad;
+        s.estado            = estado;
+        s.canal             = canal;
+        s.solicitanteId     = solicitanteId;
+        s.solicitanteNombre = solicitanteNombre;
+        s.responsable       = responsable;
+        s.historial         = historial != null ? new ArrayList<>(historial) : new ArrayList<>();
+        s.fechaRegistro     = fechaRegistro;
+        return s;
+    }
+
+    /** Constructor vacío privado — solo para uso del factory method reconstruirDesdeDB. */
+    private Solicitud() {}
+
 }
