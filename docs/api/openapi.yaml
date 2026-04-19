@@ -22,6 +22,11 @@ info:
     | Iniciar atención    | COORDINADOR o ADMINISTRATIVO |
     | Atender             | El responsable asignado      |
     | Cerrar              | COORDINADOR                  |
+
+    ### Autenticación
+    Todos los endpoints protegidos requieren un token JWT en la cabecera
+    `Authorization: Bearer <token>`. El token se obtiene mediante el
+    endpoint de autenticación de tu proveedor de identidad institucional.
   version: 1.0.0
   contact:
     name: Programa de Ingeniería de Sistemas
@@ -30,6 +35,10 @@ info:
 servers:
   - url: http://localhost:8080
     description: Servidor local
+
+# ==================== SEGURIDAD GLOBAL ====================
+security:
+  - BearerAuth: []
 
 tags:
   - name: Solicitudes
@@ -50,9 +59,14 @@ paths:
         Delega a: `RegistrarSolicitudService.registrar()`
 
         **Precondiciones:**
+        - El solicitante debe estar autenticado (token JWT válido)
         - El solicitante debe estar activo en el sistema (RN-04)
         - La descripción debe tener entre 10 y 1000 caracteres (RN-06)
+
+        **Seguridad:** requiere token JWT. Cualquier usuario activo puede registrar.
       operationId: registrarSolicitud
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -89,43 +103,152 @@ paths:
                 message: "Datos de entrada inválidos"
                 errors:
                   descripcion: "La descripción debe tener entre 10 y 1000 caracteres"
+        '401':
+          description: No autenticado — token JWT ausente, expirado o malformado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: "2025-04-05T10:00:00"
+                status: 401
+                error: "Unauthorized"
+                message: "Token JWT ausente o inválido"
+        '403':
+          description: Prohibido — el solicitante está inactivo (UsuarioInactivoException)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: "2025-04-05T10:00:00"
+                status: 403
+                error: "Forbidden"
+                message: "El solicitante debe estar activo"
         '404':
           description: Solicitante no encontrado (UsuarioNoEncontradoException)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
     get:
       tags:
         - Solicitudes
-      summary: Listar solicitudes
+      summary: Listar solicitudes con filtros y paginación
       description: |
-        Obtiene la lista de solicitudes. Permite filtrar opcionalmente por estado.
+        Obtiene un listado paginado de solicitudes.
+        Permite filtrar por múltiples parámetros de forma simultánea.
+
+        **Paginación:** usa los parámetros `page` y `size`. La respuesta incluye
+        metadatos de paginación en el objeto `PagedSolicitudResumenResponse`.
+
         Actualmente usa almacenamiento en memoria — se reemplazará con repositorio en Hito 3.
       operationId: listarSolicitudes
+      security:
+        - BearerAuth: []
       parameters:
         - name: estado
           in: query
           required: false
-          description: Filtrar por estado de la solicitud
+          description: Filtrar por estado del ciclo de vida de la solicitud
+          schema:
+            $ref: '#/components/schemas/EstadoSolicitud'
+        - name: tipo
+          in: query
+          required: false
+          description: Filtrar por tipo/categoría de la solicitud
+          schema:
+            $ref: '#/components/schemas/TipoSolicitud'
+        - name: nivelPrioridad
+          in: query
+          required: false
+          description: Filtrar por nivel de urgencia
+          schema:
+            $ref: '#/components/schemas/NivelPrioridad'
+        - name: canalOrigen
+          in: query
+          required: false
+          description: Filtrar por canal de recepción
+          schema:
+            $ref: '#/components/schemas/CanalOrigen'
+        - name: solicitanteId
+          in: query
+          required: false
+          description: Filtrar por identificación del solicitante
           schema:
             type: string
-            enum:
-              - REGISTRADA
-              - CLASIFICADA
-              - EN_ATENCION
-              - ATENDIDA
-              - CERRADA
+            example: "E-001"
+        - name: responsableId
+          in: query
+          required: false
+          description: Filtrar por identificación del responsable asignado
+          schema:
+            type: string
+            example: "D-005"
+        - name: fechaDesde
+          in: query
+          required: false
+          description: Filtrar solicitudes registradas desde esta fecha (inclusive). Formato ISO-8601.
+          schema:
+            type: string
+            format: date
+            example: "2025-01-01"
+        - name: fechaHasta
+          in: query
+          required: false
+          description: Filtrar solicitudes registradas hasta esta fecha (inclusive). Formato ISO-8601.
+          schema:
+            type: string
+            format: date
+            example: "2025-12-31"
+        - name: page
+          in: query
+          required: false
+          description: Número de página (base 0). Por defecto 0.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            example: 0
+        - name: size
+          in: query
+          required: false
+          description: Cantidad de elementos por página. Por defecto 20, máximo 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+        - name: sort
+          in: query
+          required: false
+          description: |
+            Campo y dirección de ordenamiento. Formato: `campo,asc` o `campo,desc`.
+            Campos permitidos: `fechaRegistro`, `estado`, `nivelPrioridad`.
+          schema:
+            type: string
+            example: "fechaRegistro,desc"
       responses:
         '200':
-          description: Lista de solicitudes obtenida exitosamente
+          description: Página de solicitudes obtenida exitosamente
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SolicitudResumenResponse'
+                $ref: '#/components/schemas/PagedSolicitudResumenResponse'
+        '400':
+          description: Parámetros de consulta inválidos (valor de enum incorrecto, fecha malformada, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   # ==================== /api/solicitudes/{id} ====================
   /api/solicitudes/{id}:
@@ -137,6 +260,8 @@ paths:
       description: |
         Retorna la información completa de una solicitud por su ID.
       operationId: obtenerSolicitud
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -153,12 +278,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SolicitudDetalleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           description: Solicitud no encontrada
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   # ==================== /api/solicitudes/{id}/clasificar ====================
   /api/solicitudes/{id}/clasificar:
@@ -178,6 +309,8 @@ paths:
         - El coordinador debe tener rol `COORDINADOR` (RN-13)
         - La justificación de prioridad debe tener mínimo 5 caracteres (RN-07)
       operationId: clasificarSolicitud
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -210,6 +343,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           description: El usuario no tiene rol COORDINADOR (PermisoInsuficienteException)
           content:
@@ -222,6 +357,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   # ==================== /api/solicitudes/{id}/asignar ====================
   /api/solicitudes/{id}/asignar:
@@ -241,6 +378,8 @@ paths:
         - El coordinador debe tener rol `COORDINADOR` (RN-13)
         - El responsable debe estar activo en el sistema (RN-04 / RN-10)
       operationId: asignarResponsable
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -271,6 +410,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           description: El usuario no tiene rol COORDINADOR (PermisoInsuficienteException)
           content:
@@ -283,6 +424,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   # ==================== /api/solicitudes/{id}/cerrar ====================
   /api/solicitudes/{id}/cerrar:
@@ -301,6 +444,8 @@ paths:
         - El coordinador debe tener rol `COORDINADOR` (RN-13)
         - La observación debe tener mínimo 20 caracteres (RN-08)
       operationId: cerrarSolicitud
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -331,6 +476,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           description: El usuario no tiene rol COORDINADOR (PermisoInsuficienteException)
           content:
@@ -343,6 +490,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   # ==================== /api/solicitudes/{id}/historial ====================
   /api/solicitudes/{id}/historial:
@@ -356,6 +505,8 @@ paths:
         El historial es de solo lectura — nadie puede modificarlo desde fuera del agregado.
         Cada entrada se registra automáticamente por los métodos del dominio de `Solicitud`.
       operationId: obtenerHistorial
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -364,28 +515,96 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: page
+          in: query
+          required: false
+          description: Número de página (base 0). Por defecto 0.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Entradas por página. Por defecto 20, máximo 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         '200':
-          description: Historial de la solicitud
+          description: Historial paginado de la solicitud
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/EventoHistorialResponse'
+                $ref: '#/components/schemas/PagedEventoHistorialResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Solicitud no encontrada
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 # ==================== COMPONENTS ====================
 components:
+
+  # ─── Esquema de seguridad ───────────────────────────────────────────────────
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token JWT obtenido desde el proveedor de identidad institucional.
+        Incluir en cada petición protegida como:
+        `Authorization: Bearer <token>`
+
+  # ─── Respuestas reutilizables ───────────────────────────────────────────────
+  responses:
+    Unauthorized:
+      description: No autenticado — token JWT ausente, expirado o malformado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: "2025-04-05T10:00:00"
+            status: 401
+            error: "Unauthorized"
+            message: "Token JWT ausente o inválido"
+
+    Forbidden:
+      description: Prohibido — el usuario no tiene el rol requerido para esta operación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: "2025-04-05T10:00:00"
+            status: 403
+            error: "Forbidden"
+            message: "Solo un coordinador puede clasificar una solicitud"
+
+    InternalServerError:
+      description: Error interno del servidor — fallo inesperado no controlado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: "2025-04-05T10:00:00"
+            status: 500
+            error: "Internal Server Error"
+            message: "Error interno del servidor"
+
   schemas:
 
     # ─── Request DTOs ───────────────────────────────────────────────────────
-    # Fuente: application/dto/request/
 
     CrearSolicitudRequest:
       type: object
@@ -415,10 +634,6 @@ components:
       description: |
         DTO para clasificar una solicitud existente.
         Clase Java: `ClasificarSolicitudRequest` (record)
-
-        Los campos tipo, nivelPrioridad y justificacionPrioridad son planos —
-        no se usa un objeto PrioridadDTO anidado en el request.
-        El servicio construye internamente el Value Object Prioridad.
       required:
         - tipo
         - nivelPrioridad
@@ -477,7 +692,6 @@ components:
           example: "C-001"
 
     # ─── Response DTOs ──────────────────────────────────────────────────────
-    # Fuente: application/dto/response/
 
     SolicitudDetalleResponse:
       type: object
@@ -485,9 +699,6 @@ components:
         Vista completa de una solicitud.
         Clase Java: `SolicitudDetalleResponse` (record)
         Usado en GET /{id} y como respuesta de todas las operaciones de escritura.
-
-        nivelPrioridad y justificacionPrioridad son null hasta que la solicitud sea clasificada.
-        responsableId y responsableNombre son null hasta que se asigne un responsable.
       properties:
         id:
           type: string
@@ -540,12 +751,12 @@ components:
     SolicitudResumenResponse:
       type: object
       description: |
-        Vista resumida de una solicitud para listados.
+        Vista resumida de una solicitud para listados paginados.
         Clase Java: `SolicitudResumenResponse` (record)
-        Usado en GET /api/solicitudes
+        Usado como ítem dentro de `PagedSolicitudResumenResponse`.
 
-        descripcionBreve muestra los primeros 80 caracteres de la descripción.
-        solicitanteNombre actualmente ignorado en el mapper (pendiente Hito 3).
+        `descripcionBreve` muestra los primeros 80 caracteres de la descripción.
+        `solicitanteNombre` actualmente ignorado en el mapper (pendiente Hito 3).
       properties:
         id:
           type: string
@@ -572,12 +783,95 @@ components:
           type: string
           format: date-time
 
+    # ─── Respuestas paginadas ───────────────────────────────────────────────
+
+    PageInfo:
+      type: object
+      description: Metadatos de paginación incluidos en todas las respuestas de listado.
+      properties:
+        page:
+          type: integer
+          description: Número de página actual (base 0)
+          example: 0
+        size:
+          type: integer
+          description: Tamaño de página solicitado
+          example: 20
+        totalElements:
+          type: integer
+          format: int64
+          description: Total de elementos que coinciden con el filtro
+          example: 87
+        totalPages:
+          type: integer
+          description: Total de páginas disponibles
+          example: 5
+        first:
+          type: boolean
+          description: Indica si esta es la primera página
+          example: true
+        last:
+          type: boolean
+          description: Indica si esta es la última página
+          example: false
+
+    PagedSolicitudResumenResponse:
+      type: object
+      description: |
+        Respuesta paginada del listado de solicitudes.
+        `content` contiene el arreglo de solicitudes de la página actual.
+        `page` contiene los metadatos de paginación.
+      properties:
+        content:
+          type: array
+          description: Arreglo de solicitudes en la página actual
+          items:
+            $ref: '#/components/schemas/SolicitudResumenResponse'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+      example:
+        content:
+          - id: "550e8400-e29b-41d4-a716-446655440000"
+            descripcionBreve: "Solicito homologación de la asignatura Programación I"
+            estado: "REGISTRADA"
+            nivelPrioridad: null
+            solicitanteNombre: null
+            responsableNombre: null
+            fechaRegistro: "2025-04-05T10:30:00"
+          - id: "660f9500-f30c-52e5-b827-557766551111"
+            descripcionBreve: "Necesito cancelar la asignatura de Cálculo II por motivos de salud"
+            estado: "CLASIFICADA"
+            nivelPrioridad: "ALTA"
+            solicitanteNombre: null
+            responsableNombre: "Docente López"
+            fechaRegistro: "2025-04-04T08:15:00"
+        page:
+          page: 0
+          size: 20
+          totalElements: 87
+          totalPages: 5
+          first: true
+          last: false
+
+    PagedEventoHistorialResponse:
+      type: object
+      description: |
+        Respuesta paginada del historial de una solicitud.
+        `content` contiene el arreglo de entradas de historial de la página actual.
+      properties:
+        content:
+          type: array
+          description: Arreglo de entradas de historial en la página actual
+          items:
+            $ref: '#/components/schemas/EventoHistorialResponse'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
     EventoHistorialResponse:
       type: object
       description: |
         Representa una EntradaHistorial del dominio.
         Clase Java: `EventoHistorialResponse` (record)
-        Campos mapeados directamente desde EntradaHistorial (record inmutable).
       properties:
         fechaHora:
           type: string
@@ -600,7 +894,6 @@ components:
       type: string
       description: |
         Ciclo de vida de la solicitud (RN-02).
-        Clase Java: `EstadoSolicitud` (enum con esTransicionValida())
         Transiciones válidas: REGISTRADA → CLASIFICADA → EN_ATENCION → ATENDIDA → CERRADA
       enum:
         - REGISTRADA
@@ -613,7 +906,6 @@ components:
       type: string
       description: |
         Categoría de la solicitud académica.
-        Clase Java: `TipoSolicitud` (enum)
         Se asigna durante la clasificación (RF-02).
       enum:
         - HOMOLOGACION
@@ -627,7 +919,6 @@ components:
       type: string
       description: |
         Canal por el cual fue recibida la solicitud (RF-01).
-        Clase Java: `CanalOrigen` (enum)
       enum:
         - PRESENCIAL
         - CORREO_ELECTRONICO
@@ -639,7 +930,7 @@ components:
       type: string
       description: |
         Nivel de urgencia de la solicitud (RN-07).
-        Clase Java: `NivelPrioridad` (enum), parte del Value Object Prioridad.
+        Parte del Value Object Prioridad.
       enum:
         - CRITICA
         - ALTA
@@ -650,7 +941,6 @@ components:
       type: string
       description: |
         Rol del usuario en el sistema.
-        Clase Java: `TipoUsuario` (enum)
         Determina qué operaciones puede realizar (RN-13).
       enum:
         - ESTUDIANTE
@@ -669,9 +959,10 @@ components:
         - 400 → SolicitudCerradaException, TransicionInvalidaException,
                 ObservacionInvalidaException, UsuarioInactivoException,
                 SinResponsableException, MethodArgumentNotValidException
+        - 401 → Token JWT ausente, expirado o malformado
         - 403 → PermisoInsuficienteException
         - 404 → UsuarioNoEncontradoException
-        - 500 → Exception genérica
+        - 500 → Exception genérica no controlada
 
         El campo `errors` solo aparece en errores de validación (@Valid).
       properties:
@@ -700,3 +991,4 @@ components:
           example:
             descripcion: "La descripción debe tener entre 10 y 1000 caracteres"
             canalOrigen: "El canal de origen es obligatorio"
+            
