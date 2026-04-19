@@ -15,6 +15,10 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -142,4 +146,26 @@ public class SolicitudJpaRepository implements SolicitudRepository {
 
         return mapper.toDomain(entity, solicitante, responsable);
     }
+
+    // Implementación en el adaptador el paginador 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Solicitud> findByEstadoNot(
+            EstadoSolicitud estado,
+            Pageable pageable) {
+    
+        // 1. Convertir el enum del dominio al enum JPA
+        EstadoSolicitudJpa estadoJpa = EstadoSolicitudJpa.valueOf(estado.name());
+    
+        // 2. Llamar al repositorio JPA (devuelve Page<SolicitudEntity>)
+        Page<SolicitudEntity> paginaEntidades =
+                dataRepository.findByEstadoNot(estadoJpa, pageable);
+    
+        // 3. Mapear cada SolicitudEntity a Solicitud (dominio)
+        //    Page.map() aplica la función a cada elemento conservando
+        //    los metadatos de paginación (totalElements, totalPages, etc.)
+        return paginaEntidades.map(this::toDomainConRelaciones);
+    }
+
+
 }

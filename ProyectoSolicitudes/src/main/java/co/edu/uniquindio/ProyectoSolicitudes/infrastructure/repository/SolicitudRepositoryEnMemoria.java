@@ -6,6 +6,9 @@ import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.Estado
 
 import java.util.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 /**
  * Implementación en memoria del repositorio de solicitudes.
  * Nombres de métodos en convenciones Spring Data.
@@ -80,5 +83,11 @@ public class SolicitudRepositoryEnMemoria implements SolicitudRepository {
                         || s.getEstado() == EstadoSolicitud.CLASIFICADA)
                         && s.getResponsable() == null)
                 .toList();
+    }
+
+    @Override
+    public Page<Solicitud> findByEstadoNot(EstadoSolicitud estado, Pageable pageable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'findByEstadoNot'");
     }
 }

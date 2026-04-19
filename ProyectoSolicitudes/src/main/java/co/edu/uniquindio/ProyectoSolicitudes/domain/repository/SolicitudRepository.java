@@ -8,6 +8,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+
+
 /**
  * Puerto (interfaz) del dominio para persistencia de Solicitud.
  * No conoce nada de JPA, Hibernate ni H2.
@@ -37,4 +42,12 @@ public interface SolicitudRepository {
 
     /** Solicitudes REGISTRADAS o CLASIFICADAS aún sin responsable asignado. */
     List<Solicitud> findSolicitudesPendientesDeAsignacion();
+
+
+    // Puerto del dominio: solicitudes activas paginadas
+    // Usa Page<Solicitud> (entidad de dominio, no JPA)
+    // Pageable es de Spring Data y es aceptable usarlo en el puerto porque es una abstracción agnóstica de tecnología de persistencia
+    Page<Solicitud> findByEstadoNot(EstadoSolicitud estado, Pageable pageable);
+
+
 }

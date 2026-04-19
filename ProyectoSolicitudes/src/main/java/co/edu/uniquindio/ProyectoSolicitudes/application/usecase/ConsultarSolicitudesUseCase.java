@@ -8,6 +8,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,4 +50,31 @@ public class ConsultarSolicitudesUseCase {
                 .map(solicitudRepository::findByEstado)
                 .orElseGet(solicitudRepository::findAll);
     }
+
+    /**
+     * Lista solicitudes activas (no CERRADAS) de forma paginada.
+     * @param pagina  número de página base 0 (0 = primera página)
+     * @param tamanio cantidad de elementos por página
+     * @return Page con los resultados y metadatos de paginación
+     */
+    @Transactional(readOnly = true)
+    public Page<Solicitud> listarPaginado(int pagina, int tamanio) {
+ 
+    // Construye el objeto Pageable con ordenamiento por fecha descendente
+    Pageable paginaSolicitada = PageRequest.of(
+            pagina,
+            tamanio,
+            Sort.by("fechaRegistro").descending()
+        );
+ 
+    // Excluye las CERRADAS — equivale al 'estado distinto a ELIMINADO' de la guía
+    return solicitudRepository.findByEstadoNot(
+            EstadoSolicitud.CERRADA,
+            paginaSolicitada
+        );
+    }
+
+
+
+
 }
