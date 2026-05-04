@@ -1,6 +1,6 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.*;
+import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.*;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.mapper.SolicitudMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

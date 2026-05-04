@@ -2,7 +2,7 @@ package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest;
 
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.*;
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.*;
-import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.*;
+import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.*;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.EstadoSolicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.mapper.SolicitudMapper;

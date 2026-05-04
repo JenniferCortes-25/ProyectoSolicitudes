@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.usecase;
+package co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;

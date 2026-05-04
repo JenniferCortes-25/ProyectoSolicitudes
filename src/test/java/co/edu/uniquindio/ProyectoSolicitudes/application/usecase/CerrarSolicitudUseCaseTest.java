@@ -1,5 +1,6 @@
 package co.edu.uniquindio.ProyectoSolicitudes.application.usecase;
 
+import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.CerrarSolicitudUseCase;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.UsuarioNoEncontradoException;
