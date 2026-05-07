@@ -1,7 +1,16 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest;
 
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.*;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest.AsignarResponsableRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest.AtenderSolicitudRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest.CerrarSolicitudRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest.ClasificarSolicitudRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest.CrearSolicitudRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest.IniciarAtencionRequest;
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.*;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.EventoHistorialResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SolicitudDetalleResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SolicitudResumenResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.*;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.EstadoSolicitud;

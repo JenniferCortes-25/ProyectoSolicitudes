@@ -1,7 +1,7 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.security.services;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.LoginRequest;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.TokenResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.authRequest.LoginRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.authResponse.TokenResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.application.services.SecurityService;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;

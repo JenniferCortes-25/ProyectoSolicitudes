@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.dto.request;
+package co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

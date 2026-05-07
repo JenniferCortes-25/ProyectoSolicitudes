@@ -1,8 +1,8 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.mapper;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.EventoHistorialResponse;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.SolicitudDetalleResponse;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.SolicitudResumenResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.EventoHistorialResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SolicitudDetalleResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SolicitudResumenResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.DescripcionSolicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.EntradaHistorial;

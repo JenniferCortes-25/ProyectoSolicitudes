@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.dto.request;
+package co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.CanalOrigen;
 import jakarta.validation.constraints.NotBlank;

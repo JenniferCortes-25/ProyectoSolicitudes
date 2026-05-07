@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.dto.response;
+package co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.EstadoSolicitud;
 
