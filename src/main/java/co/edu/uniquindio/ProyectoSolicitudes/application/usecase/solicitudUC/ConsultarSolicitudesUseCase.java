@@ -1,7 +1,7 @@
 package co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
-import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.UsuarioNoEncontradoException;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.SolicitudNoEncontradaException;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.repository.SolicitudRepository;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.EstadoSolicitud;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +12,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-
 
 import java.util.List;
 import java.util.Optional;
@@ -30,13 +29,14 @@ public class ConsultarSolicitudesUseCase {
 
     /**
      * Obtiene una solicitud por su ID.
+     * Lanza SolicitudNoEncontradaException (→ 404) si no existe.
      * readOnly = true porque no modifica estado.
      */
     @Transactional(readOnly = true)
     public Solicitud obtenerPorId(UUID id) {
         return solicitudRepository
                 .findById(id)
-                .orElseThrow(() -> new UsuarioNoEncontradoException(
+                .orElseThrow(() -> new SolicitudNoEncontradaException(
                         "No existe solicitud con ID: " + id));
     }
 
@@ -59,22 +59,18 @@ public class ConsultarSolicitudesUseCase {
      */
     @Transactional(readOnly = true)
     public Page<Solicitud> listarPaginado(int pagina, int tamanio) {
- 
-    // Construye el objeto Pageable con ordenamiento por fecha descendente
-    Pageable paginaSolicitada = PageRequest.of(
-            pagina,
-            tamanio,
-            Sort.by("fechaRegistro").descending()
+
+        // Construye el objeto Pageable con ordenamiento por fecha descendente
+        Pageable paginaSolicitada = PageRequest.of(
+                pagina,
+                tamanio,
+                Sort.by("fechaRegistro").descending()
         );
- 
-    // Excluye las CERRADAS — equivale al 'estado distinto a ELIMINADO' de la guía
-    return solicitudRepository.findByEstadoNot(
-            EstadoSolicitud.CERRADA,
-            paginaSolicitada
+
+        // Excluye las CERRADAS — equivale al 'estado distinto a ELIMINADO' de la guía
+        return solicitudRepository.findByEstadoNot(
+                EstadoSolicitud.CERRADA,
+                paginaSolicitada
         );
     }
-
-
-
-
 }

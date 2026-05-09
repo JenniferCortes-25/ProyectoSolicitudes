@@ -18,6 +18,10 @@ import org.springframework.security.web.SecurityFilterChain;
 /**
  * Configuración central de Spring Security con Lambda DSL (Spring Boot 3+).
  * Stateless: sin sesiones HTTP. Protección vía JWT Bearer en cada request.
+ *
+ * La autorización fina (qué ROL puede hacer qué) se delega a @PreAuthorize
+ * en cada Controller gracias a @EnableMethodSecurity.
+ * Aquí solo se define si el endpoint requiere autenticación o es público.
  */
 @Configuration
 @RequiredArgsConstructor
@@ -34,6 +38,7 @@ public class SecurityConfig {
                 // Permitir iframes para H2 Console
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
+                        // ── Endpoints públicos ──────────────────────────────
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/public/**",
@@ -43,7 +48,11 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/h2-console/**"
                         ).permitAll()
+                        // ── Endpoints protegidos (autenticación obligatoria) ─
+                        // La autorización por rol se controla con @PreAuthorize
                         .requestMatchers("/api/solicitudes/**").authenticated()
+                        .requestMatchers("/api/usuarios/**").authenticated()
+                        // ── Cualquier otra ruta también requiere autenticación ─
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->

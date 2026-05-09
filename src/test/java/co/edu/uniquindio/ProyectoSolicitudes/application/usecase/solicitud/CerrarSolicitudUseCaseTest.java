@@ -1,12 +1,11 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.usecase;
+package co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitud;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.AsignarResponsableUseCase;
+import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.CerrarSolicitudUseCase;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.UsuarioNoEncontradoException;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.repository.SolicitudRepository;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.repository.UsuarioRepository;
-import co.edu.uniquindio.ProyectoSolicitudes.domain.service.AsignarResponsableService;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.*;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.Email;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
@@ -24,14 +23,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class AsignarResponsableUseCaseTest {
+class CerrarSolicitudUseCaseTest {
 
     @Mock private SolicitudRepository solicitudRepository;
     @Mock private UsuarioRepository usuarioRepository;
-    @Mock private AsignarResponsableService asignarResponsableService;
 
     @InjectMocks
-    private AsignarResponsableUseCase useCase;
+    private CerrarSolicitudUseCase useCase;
 
     private Usuario coordinadorValido() {
         return new Usuario("C-001", "Coordinador Pérez",
@@ -43,32 +41,35 @@ class AsignarResponsableUseCaseTest {
                 new Email("docente@uniquindio.edu.co"), TipoUsuario.DOCENTE);
     }
 
-    private Solicitud solicitudClasificada() {
+    private Solicitud solicitudAtendida() {
         Usuario solicitante = new Usuario("E-001", "Estudiante García",
                 new Email("est@uniquindio.edu.co"), TipoUsuario.ESTUDIANTE);
         Usuario coordinador = coordinadorValido();
+        Usuario docente = docenteValido();
+
         Solicitud s = new Solicitud(
                 new DescripcionSolicitud("Necesito homologar materia cursada en otra universidad"),
                 CanalOrigen.CORREO_ELECTRONICO,
                 solicitante
         );
         s.clasificar(TipoSolicitud.HOMOLOGACION, coordinador);
-        s.asignarPrioridad(
-                new Prioridad(NivelPrioridad.ALTA, "Tiene fecha límite próxima"), coordinador);
+        s.asignarPrioridad(new Prioridad(NivelPrioridad.ALTA, "Tiene fecha límite próxima"), coordinador);
+        s.asignarResponsable(
+                new Responsable(docente.getId(), docente.getNombre()), coordinador);
+        s.iniciarAtencion(coordinador);
+        s.atender("Proceso completado", docente);
         return s;
     }
 
     @Test
-    void deberiaAsignarResponsableCuandoDatosValidos() {
+    void deberiaCerrarSolicitudCuandoEstadoAtendida() {
         // Arrange
-        Solicitud solicitud = solicitudClasificada();
         Usuario coordinador = coordinadorValido();
-        Usuario docente = docenteValido();
+        Solicitud solicitud = solicitudAtendida();
+        UUID solicitudId = solicitud.getId();
 
-        when(solicitudRepository.findById(solicitud.getId()))
+        when(solicitudRepository.findById(solicitudId))
                 .thenReturn(Optional.of(solicitud));
-        when(usuarioRepository.findByIdentificacion("D-001"))
-                .thenReturn(Optional.of(docente));
         when(usuarioRepository.findByIdentificacion("C-001"))
                 .thenReturn(Optional.of(coordinador));
         when(solicitudRepository.save(any()))
@@ -76,17 +77,16 @@ class AsignarResponsableUseCaseTest {
 
         // Act
         Solicitud resultado = useCase.ejecutar(
-                solicitud.getId(),
-                "D-001",
+                solicitudId,
+                "Homologación aprobada por consejo de programa",
                 "C-001"
         );
 
         // Assert
         assertNotNull(resultado);
-        verify(solicitudRepository).findById(solicitud.getId());
-        verify(usuarioRepository).findByIdentificacion("D-001");
+        assertEquals(EstadoSolicitud.CERRADA, resultado.getEstado());
+        verify(solicitudRepository).findById(solicitudId);
         verify(usuarioRepository).findByIdentificacion("C-001");
-        verify(asignarResponsableService).asignar(any(), any(), any());
         verify(solicitudRepository).save(solicitud);
     }
 
@@ -99,46 +99,33 @@ class AsignarResponsableUseCaseTest {
 
         // Act & Assert
         assertThrows(UsuarioNoEncontradoException.class, () ->
-                useCase.ejecutar(idInexistente, "D-001", "C-001")
+                useCase.ejecutar(
+                        idInexistente,
+                        "Homologación aprobada por consejo de programa",
+                        "C-001"
+                )
         );
 
-        verify(asignarResponsableService, never()).asignar(any(), any(), any());
-        verify(solicitudRepository, never()).save(any());
-    }
-
-    @Test
-    void deberiaLanzarExcepcionCuandoResponsableNoExiste() {
-        // Arrange
-        Solicitud solicitud = solicitudClasificada();
-        when(solicitudRepository.findById(solicitud.getId()))
-                .thenReturn(Optional.of(solicitud));
-        when(usuarioRepository.findByIdentificacion("X-999"))
-                .thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThrows(UsuarioNoEncontradoException.class, () ->
-                useCase.ejecutar(solicitud.getId(), "X-999", "C-001")
-        );
-
+        // Verify: nunca se intentó guardar
         verify(solicitudRepository, never()).save(any());
     }
 
     @Test
     void deberiaLanzarExcepcionCuandoCoordinadorNoExiste() {
         // Arrange
-        Solicitud solicitud = solicitudClasificada();
-        Usuario docente = docenteValido();
-
+        Solicitud solicitud = solicitudAtendida();
         when(solicitudRepository.findById(solicitud.getId()))
                 .thenReturn(Optional.of(solicitud));
-        when(usuarioRepository.findByIdentificacion("D-001"))
-                .thenReturn(Optional.of(docente));
         when(usuarioRepository.findByIdentificacion("X-999"))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(UsuarioNoEncontradoException.class, () ->
-                useCase.ejecutar(solicitud.getId(), "D-001", "X-999")
+                useCase.ejecutar(
+                        solicitud.getId(),
+                        "Homologación aprobada por consejo de programa",
+                        "X-999"
+                )
         );
 
         verify(solicitudRepository, never()).save(any());

@@ -24,6 +24,10 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // ══════════════════════════════════════════════════════════════════════
+    // VALIDACIÓN DE ENTRADA
+    // ══════════════════════════════════════════════════════════════════════
+
     /**
      * Errores de validación Bean Validation (@Valid en el Controller).
      * → 400 Bad Request con detalle de cada campo inválido.
@@ -39,6 +43,10 @@ public class GlobalExceptionHandler {
 
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "Datos de entrada inválidos", errores);
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // EXCEPCIONES DE DOMINIO — SOLICITUD
+    // ══════════════════════════════════════════════════════════════════════
 
     /**
      * RN-01 — Solicitud cerrada no puede modificarse.
@@ -61,6 +69,30 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * RN-05 — No se puede iniciar atención sin responsable asignado.
+     * → 400 Bad Request
+     */
+    @ExceptionHandler(SinResponsableException.class)
+    public ResponseEntity<Map<String, Object>> handleSinResponsable(
+            SinResponsableException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+    }
+
+    /**
+     * Solicitud no encontrada por su ID.
+     * → 404 Not Found
+     */
+    @ExceptionHandler(SolicitudNoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleSolicitudNoEncontrada(
+            SolicitudNoEncontradaException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // EXCEPCIONES DE DOMINIO — USUARIO
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
      * RN-04 / RN-10 — Usuario inactivo no puede recibir asignaciones.
      * → 400 Bad Request
      */
@@ -71,33 +103,52 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * RN-05 — No se puede iniciar atención sin responsable.
-     * → 400 Bad Request
+     * Usuario ya está en el estado que se intenta aplicar.
+     * Lanzado por Usuario.activar() si ya es ACTIVO, o desactivar() si ya es INACTIVO.
+     * → 409 Conflict (el recurso existe pero su estado impide la operación)
      */
-    @ExceptionHandler(SinResponsableException.class)
-    public ResponseEntity<Map<String, Object>> handleSinResponsable(
-            SinResponsableException ex) {
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalState(
+            IllegalStateException ex) {
+        return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // NO ENCONTRADO
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Usuario no encontrado por ID o identificación.
+     * → 404 Not Found
+     */
+    @ExceptionHandler(UsuarioNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleUsuarioNoEncontrado(
+            UsuarioNoEncontradoException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
     }
 
     /**
-     * Permisos insuficientes para la operación.
+     * UUID con formato inválido en el path, o duplicado de identificación al crear usuario.
+     * → 400 Bad Request
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(
+            IllegalArgumentException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // AUTORIZACIÓN Y AUTENTICACIÓN
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Permisos de dominio insuficientes para la operación.
      * → 403 Forbidden
      */
     @ExceptionHandler(PermisoInsuficienteException.class)
     public ResponseEntity<Map<String, Object>> handlePermisoInsuficiente(
             PermisoInsuficienteException ex) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), null);
-    }
-
-    /**
-     * Usuario o solicitud no encontrados.
-     * → 404 Not Found
-     */
-    @ExceptionHandler(UsuarioNoEncontradoException.class)
-    public ResponseEntity<Map<String, Object>> handleNoEncontrado(
-            UsuarioNoEncontradoException ex) {
-        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
     }
 
     /**
@@ -131,6 +182,10 @@ public class GlobalExceptionHandler {
                 "No tienes permisos para realizar esta acción", null);
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // FALLBACK GENÉRICO
+    // ══════════════════════════════════════════════════════════════════════
+
     /**
      * Cualquier otra excepción no controlada.
      * → 500 Internal Server Error
@@ -141,15 +196,9 @@ public class GlobalExceptionHandler {
                 "Error interno del servidor", null);
     }
 
-    /**
-     * ID con formato de UUID inválido en el path.
-     * → 404 Not Found para mantener consistencia con "recurso no encontrado"
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(
-            IllegalArgumentException ex) {
-        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
-    }
+    // ══════════════════════════════════════════════════════════════════════
+    // UTILIDAD
+    // ══════════════════════════════════════════════════════════════════════
 
     private ResponseEntity<Map<String, Object>> buildErrorResponse(
             HttpStatus status, String mensaje, Map<String, String> errores) {

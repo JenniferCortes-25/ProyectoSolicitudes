@@ -1,9 +1,9 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.usecase;
+package co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitud;
 
 import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.ConsultarSolicitudesUseCase;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;
-import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.UsuarioNoEncontradoException;
+import co.edu.uniquindio.ProyectoSolicitudes.domain.exception.SolicitudNoEncontradaException;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.repository.SolicitudRepository;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.CanalOrigen;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.DescripcionSolicitud;
@@ -32,7 +32,7 @@ class ConsultarSolicitudesUseCaseTest {
     private ConsultarSolicitudesUseCase useCase;
 
     private Solicitud solicitudMock() {
-        Usuario solicitante = new Usuario("E-001", "Estudiante García",
+        Usuario solicitante = new Usuario("E-001", "Estudiante Garcia",
                 new Email("est@uniquindio.edu.co"), TipoUsuario.ESTUDIANTE);
         return new Solicitud(
                 new DescripcionSolicitud("Necesito homologar materia cursada en otra universidad"),
@@ -65,7 +65,7 @@ class ConsultarSolicitudesUseCaseTest {
                 .thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThrows(UsuarioNoEncontradoException.class, () ->
+        assertThrows(SolicitudNoEncontradaException.class, () ->
                 useCase.obtenerPorId(idInexistente)
         );
     }
