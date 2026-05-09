@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa;
+package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.repositories;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;
