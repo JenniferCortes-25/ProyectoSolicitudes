@@ -7,12 +7,16 @@ import co.edu.uniquindio.ProyectoSolicitudes.domain.repository.UsuarioRepository
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.*;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.Email;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.SolicitudJpaRepository;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.UsuarioJpaRepository;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.mapper.SolicitudPersistenceMapperImpl;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.mapper.UsuarioPersistenceMapperImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,18 +24,18 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests de integración para SolicitudJpaRepository.
- *
- * @SpringBootTest levanta el contexto completo con H2 en memoria.
- * @DirtiesContext reinicia el contexto (y la BD) entre tests.
- *
- * Estos tests validan el flujo completo:
- * Controller → UseCase → SolicitudRepository (JPA) → H2
+ * Pruebas de repositorio para SolicitudJpaRepository.
  */
-@SpringBootTest
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@DataJpaTest
+@Import({
+    SolicitudJpaRepository.class,
+    UsuarioJpaRepository.class,
+    SolicitudPersistenceMapperImpl.class,
+    UsuarioPersistenceMapperImpl.class
+})
 class SolicitudJpaRepositoryTest {
 
+    // Inyectamos las interfaces de dominio (los adaptadores importados las implementan)
     @Autowired
     private SolicitudRepository solicitudRepository;
 
@@ -42,14 +46,14 @@ class SolicitudJpaRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        // Guardar un usuario de prueba antes de cada test
+        // [ARRANGE] — guardar usuario base antes de cada test
         estudianteGuardado = usuarioRepository.save(
                 new Usuario("EST-TEST", "Estudiante Test",
                         new Email("est.test@uniquindio.edu.co"),
                         TipoUsuario.ESTUDIANTE));
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helper ────────────────────────────────────────────────────────────────
 
     private Solicitud crearSolicitudDePrueba() {
         return new Solicitud(
@@ -64,21 +68,18 @@ class SolicitudJpaRepositoryTest {
     @Test
     @DisplayName("Debe guardar una solicitud y recuperarla por ID")
     void deberiaGuardarYRecuperarPorId() {
-        // Arrange
-        Solicitud nueva = crearSolicitudDePrueba();
+        Solicitud nueva    = crearSolicitudDePrueba();
+        Solicitud guardada = solicitudRepository.save(nueva);
 
-        // Act
-        Solicitud guardada   = solicitudRepository.save(nueva);
         Optional<Solicitud> recuperada = solicitudRepository.findById(guardada.getId());
 
-        // Assert
         assertTrue(recuperada.isPresent());
-        assertEquals(guardada.getId(),                    recuperada.get().getId());
+        assertEquals(guardada.getId(),                recuperada.get().getId());
         assertEquals("Necesito homologar Programación Básica",
                      recuperada.get().getDescripcion().texto());
-        assertEquals(EstadoSolicitud.REGISTRADA,          recuperada.get().getEstado());
-        assertEquals(CanalOrigen.CORREO_ELECTRONICO,      recuperada.get().getCanal());
-        assertEquals(estudianteGuardado.getNombre(),       recuperada.get().getSolicitanteNombre());
+        assertEquals(EstadoSolicitud.REGISTRADA,      recuperada.get().getEstado());
+        assertEquals(CanalOrigen.CORREO_ELECTRONICO,  recuperada.get().getCanal());
+        assertEquals(estudianteGuardado.getNombre(),   recuperada.get().getSolicitanteNombre());
     }
 
     @Test
@@ -98,7 +99,7 @@ class SolicitudJpaRepositoryTest {
         solicitudRepository.save(crearSolicitudDePrueba());
         solicitudRepository.save(crearSolicitudDePrueba());
 
-        List<Solicitud> registradas = solicitudRepository.findByEstado(EstadoSolicitud.REGISTRADA);
+        List<Solicitud> registradas  = solicitudRepository.findByEstado(EstadoSolicitud.REGISTRADA);
         List<Solicitud> clasificadas = solicitudRepository.findByEstado(EstadoSolicitud.CLASIFICADA);
 
         assertEquals(2, registradas.size());
@@ -119,7 +120,6 @@ class SolicitudJpaRepositoryTest {
     @Test
     @DisplayName("Debe filtrar por solicitante")
     void deberiaFiltrarPorSolicitante() {
-        // Crear segundo usuario
         Usuario otro = usuarioRepository.save(
                 new Usuario("EST-OTRO", "Otro Estudiante",
                         new Email("otro@uniquindio.edu.co"),
@@ -141,19 +141,18 @@ class SolicitudJpaRepositoryTest {
     @Test
     @DisplayName("Debe persistir el historial de la solicitud")
     void deberiaPersistirHistorial() {
-        Solicitud solicitud = crearSolicitudDePrueba();
-        Solicitud guardada  = solicitudRepository.save(solicitud);
+        Solicitud guardada = solicitudRepository.save(crearSolicitudDePrueba());
 
         Optional<Solicitud> recuperada = solicitudRepository.findById(guardada.getId());
 
         assertTrue(recuperada.isPresent());
-        // El constructor siempre agrega una entrada de "Solicitud registrada"
+        // El constructor siempre agrega una entrada "Solicitud registrada"
         assertFalse(recuperada.get().getHistorial().isEmpty());
         assertEquals(1, recuperada.get().getHistorial().size());
     }
 
     @Test
-    @DisplayName("Debe encontrar solicitudes pendientes de asignacion")
+    @DisplayName("Debe encontrar solicitudes pendientes de asignación")
     void deberiaEncontrarPendientesDeAsignacion() {
         solicitudRepository.save(crearSolicitudDePrueba()); // REGISTRADA, sin responsable
 
@@ -176,7 +175,7 @@ class SolicitudJpaRepositoryTest {
     }
 
     @Test
-    @DisplayName("Debe devolver Optional vacio para ID inexistente")
+    @DisplayName("Debe devolver Optional vacío para ID inexistente")
     void deberiaRetornarEmptyParaIdInexistente() {
         Optional<Solicitud> resultado =
                 solicitudRepository.findById(java.util.UUID.randomUUID());
