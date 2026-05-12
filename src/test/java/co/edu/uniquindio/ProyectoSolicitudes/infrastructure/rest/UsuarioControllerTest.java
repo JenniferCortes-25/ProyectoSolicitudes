@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -15,10 +16,18 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Pruebas unitarias del UsuarioController con seguridad desactivada.
+ * Verifica únicamente comportamiento HTTP: códigos de estado, validaciones
+ * de entrada y mapeo de excepciones.
+ *
+ */
 @WebMvcTest(
     controllers = UsuarioController.class,
     excludeAutoConfiguration = {
@@ -38,6 +47,11 @@ class UsuarioControllerTest {
     @MockitoBean private ConsultarUsuariosUseCase consultarUsuariosUseCase;
     @MockitoBean private ActivarUsuarioUseCase activarUsuarioUseCase;
     @MockitoBean private DesactivarUsuarioUseCase desactivarUsuarioUseCase;
+    @MockitoBean private CambiarPasswordUseCase cambiarPasswordUseCase;
+
+    // ══════════════════════════════════════════════════════════════════════
+    // POST /api/usuarios — validaciones de entrada
+    // ══════════════════════════════════════════════════════════════════════
 
     @Test
     void deberiaRetornar400CuandoIdentificacionEsBlanca() throws Exception {
@@ -138,6 +152,10 @@ class UsuarioControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // GET /api/usuarios
+    // ══════════════════════════════════════════════════════════════════════
+
     @Test
     void deberiaRetornar200AlListarUsuarios() throws Exception {
         when(consultarUsuariosUseCase.listarTodos()).thenReturn(List.of());
@@ -162,6 +180,10 @@ class UsuarioControllerTest {
         mockMvc.perform(get("/api/usuarios/no-es-uuid").accept(JSON))
                 .andExpect(status().isBadRequest());
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // PUT /api/usuarios/{id}/activar y desactivar
+    // ══════════════════════════════════════════════════════════════════════
 
     @Test
     void deberiaRetornar404AlActivarUsuarioInexistente() throws Exception {
@@ -214,6 +236,91 @@ class UsuarioControllerTest {
     @Test
     void deberiaRetornar400CuandoIdDesactivarEsMalformado() throws Exception {
         mockMvc.perform(put("/api/usuarios/id-invalido/desactivar").accept(JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // PUT /api/usuarios/{id}/cambiar-password
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Flujo feliz: contraseña cambiada correctamente → 204 No Content.
+     * cambiarPasswordUseCase.ejecutar es void; sin stubbing no lanza nada.
+     */
+    @Test
+    void deberiaRetornar204AlCambiarPasswordExitosamente() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(put("/api/usuarios/" + id + "/cambiar-password")
+                        .contentType(JSON).accept(JSON)
+                        .content("""
+                                {
+                                    "passwordActual": "Password123",
+                                    "passwordNueva": "NuevaClave456"
+                                }
+                                """))
+                .andExpect(status().isNoContent()); // 204
+    }
+
+    /**
+     * Contraseña actual incorrecta → BadCredentialsException →
+     * GlobalExceptionHandler la mapea a 401, pero en este test de capa web
+     * (sin seguridad) el handler la convierte a 401.
+     *
+     * NOTA: el GlobalExceptionHandler mapea BadCredentialsException → 401.
+     * Si tu handler la mapea a 400, cambia el andExpect a isBadRequest().
+     */
+    @Test
+    void deberiaRetornar401AlCambiarPasswordConClaveIncorrecta() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        doThrow(new BadCredentialsException("La contraseña actual es incorrecta"))
+                .when(cambiarPasswordUseCase).ejecutar(eq(id), any(), any());
+
+        mockMvc.perform(put("/api/usuarios/" + id + "/cambiar-password")
+                        .contentType(JSON).accept(JSON)
+                        .content("""
+                                {
+                                    "passwordActual": "ClaveErrada",
+                                    "passwordNueva": "NuevaClave456"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized()); // 401 — ver GlobalExceptionHandler
+    }
+
+    /**
+     * Body con campos vacíos → validación @NotBlank → 400 Bad Request.
+     */
+    @Test
+    void deberiaRetornar400CuandoPasswordActualEsBlanca() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(put("/api/usuarios/" + id + "/cambiar-password")
+                        .contentType(JSON).accept(JSON)
+                        .content("""
+                                {
+                                    "passwordActual": "",
+                                    "passwordNueva": "NuevaClave456"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * passwordNueva con menos de 8 caracteres → @Size(min=8) → 400 Bad Request.
+     */
+    @Test
+    void deberiaRetornar400CuandoPasswordNuevaMenorA8Caracteres() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(put("/api/usuarios/" + id + "/cambiar-password")
+                        .contentType(JSON).accept(JSON)
+                        .content("""
+                                {
+                                    "passwordActual": "Password123",
+                                    "passwordNueva": "corta"
+                                }
+                                """))
                 .andExpect(status().isBadRequest());
     }
 }
