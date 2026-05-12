@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.usuarioResponse;
+package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.usuarioResponse;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.EstadoUsuario;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;

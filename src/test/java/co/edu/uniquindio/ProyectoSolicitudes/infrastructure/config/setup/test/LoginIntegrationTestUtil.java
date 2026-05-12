@@ -1,8 +1,10 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.config.setup.test;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.authRequest.LoginRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.request.authRequest.LoginRequest;
+
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;

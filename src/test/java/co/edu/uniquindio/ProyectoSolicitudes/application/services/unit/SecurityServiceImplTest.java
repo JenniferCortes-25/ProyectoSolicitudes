@@ -1,7 +1,7 @@
 package co.edu.uniquindio.ProyectoSolicitudes.application.services.unit;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.authRequest.LoginRequest;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.config.setup.test.UsuarioSecurityTestDataLoader;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.request.authRequest.LoginRequest;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.entity.UsuarioSecurityEntity;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.security.JwtTokenProvider;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.security.services.SecurityServiceImpl;
