@@ -1,5 +1,6 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest;
 
+import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.usuarioRequest.CambiarPasswordRequest;
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.usuarioRequest.CrearUsuarioRequest;
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.usuarioResponse.UsuarioDetalleResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.usuarioResponse.UsuarioResumenResponse;
@@ -25,15 +26,16 @@ import java.util.UUID;
 @Tag(name = "Usuarios", description = "Gestión de usuarios")
 public class UsuarioController {
 
-    private final UsuarioMapper mapper;
-    private final CrearUsuarioUseCase crearUsuarioUseCase;
+    private final UsuarioMapper            mapper;
+    private final CrearUsuarioUseCase      crearUsuarioUseCase;
     private final ConsultarUsuariosUseCase consultarUsuariosUseCase;
-    private final ActivarUsuarioUseCase activarUsuarioUseCase;
+    private final ActivarUsuarioUseCase    activarUsuarioUseCase;
     private final DesactivarUsuarioUseCase desactivarUsuarioUseCase;
+    private final CambiarPasswordUseCase   cambiarPasswordUseCase;
 
     @PostMapping
     @PreAuthorize("hasAuthority('ADMIN')")
-    @Operation(summary = "Crear un nuevo usuario")
+    @Operation(summary = "Crear un nuevo usuario (solo coordinador)")
     public ResponseEntity<UsuarioDetalleResponse> crear(
             @Valid @RequestBody CrearUsuarioRequest request) {
 
@@ -86,5 +88,20 @@ public class UsuarioController {
             @PathVariable String id) {
         Usuario usuario = desactivarUsuarioUseCase.ejecutar(UUID.fromString(id));
         return ResponseEntity.ok(mapper.toDetalleResponse(usuario));
+    }
+
+    @PutMapping("/{id}/cambiar-password")
+    @PreAuthorize("hasAnyAuthority('ADMIN','USER')")
+    @Operation(summary = "Cambiar contraseña del usuario")
+    public ResponseEntity<Void> cambiarPassword(
+            @PathVariable String id,
+            @Valid @RequestBody CambiarPasswordRequest request) {
+
+        cambiarPasswordUseCase.ejecutar(
+                UUID.fromString(id),
+                request.passwordActual(),
+                request.passwordNueva()
+        );
+        return ResponseEntity.noContent().build();
     }
 }

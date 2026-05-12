@@ -14,6 +14,7 @@ public record UsuarioResumenResponse (
     UUID id,
     String identificacion,
     String nombre,
+    String email,
     TipoUsuario tipoUsuario,
     EstadoUsuario estadoUsuario
 ) {}
