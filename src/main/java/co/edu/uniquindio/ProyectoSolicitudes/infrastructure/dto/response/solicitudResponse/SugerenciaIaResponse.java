@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse;
+package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse;
 
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.NivelPrioridad;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.TipoSolicitud;

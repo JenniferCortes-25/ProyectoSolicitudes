@@ -1,6 +1,6 @@
 package co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SugerenciaIaResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.SugerenciaIaResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.service.AsistenteIaPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

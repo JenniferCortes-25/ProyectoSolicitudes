@@ -9,8 +9,8 @@ import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.Email;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.SolicitudJpaRepository;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.UsuarioJpaRepository;
-import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.mapper.SolicitudPersistenceMapperImpl;
-import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.mapper.UsuarioPersistenceMapperImpl;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.mapper.SolicitudPersistenceMapper;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.persistence.jpa.mapper.UsuarioPersistenceMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,8 +30,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @Import({
     SolicitudJpaRepository.class,
     UsuarioJpaRepository.class,
-    SolicitudPersistenceMapperImpl.class,
-    UsuarioPersistenceMapperImpl.class
+    SolicitudPersistenceMapper.class,
+    UsuarioPersistenceMapper.class
 })
 class SolicitudJpaRepositoryTest {
 

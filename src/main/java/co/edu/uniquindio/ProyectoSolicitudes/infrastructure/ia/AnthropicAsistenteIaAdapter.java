@@ -1,7 +1,7 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.ia;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.ResumenIaResponse;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SugerenciaIaResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.ResumenIaResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.SugerenciaIaResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.service.AsistenteIaPort;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.NivelPrioridad;

@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse;
+package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse;
 
 /**
  * Respuesta del asistente IA con resumen textual de la solicitud (RF-09).

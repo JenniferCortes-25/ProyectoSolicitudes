@@ -1,6 +1,6 @@
 package co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.ResumenIaResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.ResumenIaResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.repository.SolicitudRepository;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.service.AsistenteIaPort;

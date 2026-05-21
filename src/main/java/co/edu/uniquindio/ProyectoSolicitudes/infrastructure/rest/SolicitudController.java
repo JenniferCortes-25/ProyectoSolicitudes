@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -78,6 +79,20 @@ public class SolicitudController {
         List<Solicitud> resultado = consultarSolicitudesUseCase.listar(
                 Optional.ofNullable(estado));
         return ResponseEntity.ok(mapper.toResumenResponseList(resultado));
+    }
+
+    @GetMapping("/paginado")
+    @PreAuthorize("hasAnyAuthority('ADMIN','USER')")
+    @Operation(summary = "Listar solicitudes de forma paginada",
+            description = "Retorna una página de solicitudes activas (no CERRADAS), ordenadas por fecha descendente.")
+    @ApiResponse(responseCode = "200", description = "Página de solicitudes")
+    public ResponseEntity<Page<SolicitudResumenResponse>> listarPaginado(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+
+        Page<Solicitud> resultado = consultarSolicitudesUseCase.listarPaginado(page, size);
+        Page<SolicitudResumenResponse> respuesta = resultado.map(mapper::toResumenResponse);
+        return ResponseEntity.ok(respuesta);
     }
 
     @GetMapping("/{id}")

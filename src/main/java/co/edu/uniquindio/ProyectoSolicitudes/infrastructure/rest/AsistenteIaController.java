@@ -1,8 +1,8 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.solicitudRequest.SugerenciaIaRequest;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.ResumenIaResponse;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SugerenciaIaResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.request.solicitudRequest.SugerenciaIaRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.ResumenIaResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.SugerenciaIaResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.GenerarResumenIaUseCase;
 import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.solicitudUC.SugerirClasificacionIaUseCase;
 import io.swagger.v3.oas.annotations.Operation;
