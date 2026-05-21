@@ -1,8 +1,9 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.mapper;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.usuarioResponse.UsuarioDetalleResponse;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.usuarioResponse.UsuarioResumenResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.usuarioResponse.UsuarioDetalleResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.usuarioResponse.UsuarioResumenResponse;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

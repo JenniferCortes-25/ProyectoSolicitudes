@@ -1,11 +1,11 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.usuarioRequest.CambiarPasswordRequest;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.usuarioRequest.CrearUsuarioRequest;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.usuarioResponse.UsuarioDetalleResponse;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.usuarioResponse.UsuarioResumenResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.application.usecase.usuarioUC.*;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Usuario;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.request.usuarioRequest.CambiarPasswordRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.request.usuarioRequest.CrearUsuarioRequest;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.usuarioResponse.UsuarioDetalleResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.usuarioResponse.UsuarioResumenResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.mapper.UsuarioMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

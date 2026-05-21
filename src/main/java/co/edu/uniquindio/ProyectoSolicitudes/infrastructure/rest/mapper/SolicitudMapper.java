@@ -1,11 +1,12 @@
 package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.rest.mapper;
 
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.EventoHistorialResponse;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SolicitudDetalleResponse;
-import co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.solicitudResponse.SolicitudResumenResponse;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.entity.Solicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.DescripcionSolicitud;
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.solicitud.EntradaHistorial;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.EventoHistorialResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.SolicitudDetalleResponse;
+import co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.solicitudResponse.SolicitudResumenResponse;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;

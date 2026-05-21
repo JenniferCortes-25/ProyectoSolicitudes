@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.dto.response.authResponse;
+package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.response.authResponse;
 
 import java.time.Instant;
 import java.util.Collection;

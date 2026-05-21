@@ -1,4 +1,4 @@
-package co.edu.uniquindio.ProyectoSolicitudes.application.dto.request.usuarioRequest;
+package co.edu.uniquindio.ProyectoSolicitudes.infrastructure.dto.request.usuarioRequest;
  
 import co.edu.uniquindio.ProyectoSolicitudes.domain.valueobject.usuario.TipoUsuario;
 import jakarta.validation.constraints.Email;
